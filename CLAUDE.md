@@ -3,7 +3,9 @@
 ## Project Context
 - **Type:** Application mobile Android (Flutter)
 - **Stack:** Flutter / Dart — Gemini API — Android STT/TTS — PDF Dart
-- **Target:** Android (Pixel 10 Pro prioritaire), pas de backend serveur
+- **Target:** Android (Pixel 10 Pro prioritaire), compatible autres Android
+- **Objectif produit:** Améliorer le niveau d'anglais via dialogue vocal interactif avec un professeur IA
+- **Utilisateur:** Solo, autonome — pas de compte, pas d'authentification
 
 ## Project Structure
 ```
@@ -38,8 +40,23 @@ lib/
 - **Android TTS** : `flutter_tts` package Flutter
 - **PDF** : package `pdf` + `printing` pour export
 
+## Core UX Principles
+- Interface **light theme** par défaut, moderne et user-friendly
+- Dialogue vocal = flux principal — le micro doit être accessible en 1 tap
+- Affichage progressif : vocab + phrases + traductions s'accumulent au fil de la session
+- PDF exporté : structuré, esthétique, lisible — titre, sections vocab, phrases, traductions
+- Pas de latence perceptible entre la réponse vocale et l'affichage texte
+
+## Pedagogy — Comportement du Professeur IA
+- Corrige les erreurs de l'utilisateur (prononciation, grammaire, vocabulaire)
+- Traduit à la demande
+- Pose des questions, fait répéter, challenge l'utilisateur
+- Structure un plan de travail autour du thème choisi
+- Adapte le niveau au fil de la conversation
+
 ## Known Issues / Gotchas
 - STT nécessite permission `RECORD_AUDIO` dans AndroidManifest.xml
-- TTS : tester les voix anglaises disponibles sur le device (qualité variable)
-- Gemini Flash : contexte limité à ~1M tokens — gérer la fenêtre de conversation
-- PDF generation : fonts custom à embarquer dans assets/fonts/
+- TTS : tester les voix anglaises disponibles sur le device (qualité variable selon Android)
+- Gemini Flash : gérer la fenêtre de contexte — résumer l'historique si trop long
+- PDF generation : fonts custom à embarquer dans `assets/fonts/`
+- Hive : initialiser avant `runApp()` dans `main.dart`
