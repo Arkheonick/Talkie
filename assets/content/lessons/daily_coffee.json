@@ -1,0 +1,127 @@
+{
+  "id": "daily_coffee",
+  "title": "Ordering at a Coffee Shop",
+  "description": "Order drinks and food, ask about ingredients, and make small talk with a barista.",
+  "domain": "daily",
+  "level": "a2",
+  "duration_seconds": 150,
+  "emoji": "☕",
+  "transcript": [
+    {
+      "index": 0,
+      "speaker": "barista",
+      "text": "Hi there! What can I get for you today?",
+      "translation": "Bonjour ! Qu'est-ce que je vous sers aujourd'hui ?"
+    },
+    {
+      "index": 1,
+      "speaker": "customer",
+      "text": "Hello! I'd like a medium latte, please. Could you make it oat milk?",
+      "translation": "Bonjour ! Je voudrais un latte moyen, s'il vous plaît. Vous pouvez le faire avec du lait d'avoine ?"
+    },
+    {
+      "index": 2,
+      "speaker": "barista",
+      "text": "Of course! Oat milk latte coming right up. Anything to eat with that?",
+      "translation": "Bien sûr ! Un latte au lait d'avoine tout de suite. Quelque chose à manger avec ça ?"
+    },
+    {
+      "index": 3,
+      "speaker": "customer",
+      "text": "Yes, I'll have one of those blueberry muffins. They look delicious!",
+      "translation": "Oui, je prendrai un de ces muffins aux myrtilles. Ils ont l'air délicieux !"
+    },
+    {
+      "index": 4,
+      "speaker": "barista",
+      "text": "Good choice — they're freshly baked this morning. Are you having it here or taking away?",
+      "translation": "Bon choix — ils sont fraîchement cuits ce matin. Vous mangez sur place ou c'est à emporter ?"
+    },
+    {
+      "index": 5,
+      "speaker": "customer",
+      "text": "I'll have it here, thanks. Oh, does the muffin contain any nuts? I have a slight allergy.",
+      "translation": "Je vais rester ici, merci. Oh, est-ce que le muffin contient des fruits à coque ? J'ai une légère allergie."
+    },
+    {
+      "index": 6,
+      "speaker": "barista",
+      "text": "Let me check the label for you. No nuts at all — it's made with blueberries, flour, and buttermilk. You're safe!",
+      "translation": "Laissez-moi vérifier l'étiquette pour vous. Pas du tout de fruits à coque — il est fait avec des myrtilles, de la farine et du lait ribot. Vous pouvez y aller !"
+    },
+    {
+      "index": 7,
+      "speaker": "customer",
+      "text": "Perfect, thank you for checking. That's really kind of you.",
+      "translation": "Parfait, merci de vérifier. C'est vraiment gentil de votre part."
+    },
+    {
+      "index": 8,
+      "speaker": "barista",
+      "text": "No problem at all! So that'll be six pounds fifty. Are you paying by card?",
+      "translation": "Pas de problème ! Ça fait donc six livres cinquante. Vous payez par carte ?"
+    },
+    {
+      "index": 9,
+      "speaker": "customer",
+      "text": "Yes, contactless please.",
+      "translation": "Oui, sans contact s'il vous plaît."
+    },
+    {
+      "index": 10,
+      "speaker": "barista",
+      "text": "Perfect. I'll bring your order over in a couple of minutes. Enjoy the sunshine — it's a lovely day out there!",
+      "translation": "Parfait. Je vous apporte votre commande dans quelques minutes. Profitez du soleil — il fait vraiment beau dehors !"
+    },
+    {
+      "index": 11,
+      "speaker": "customer",
+      "text": "It really is! I might sit outside actually. Is the terrace open?",
+      "translation": "C'est vrai ! Je vais peut-être m'installer dehors en fait. Est-ce que la terrasse est ouverte ?"
+    },
+    {
+      "index": 12,
+      "speaker": "barista",
+      "text": "Yes, the terrace is open. Go ahead and grab a table — I'll come find you.",
+      "translation": "Oui, la terrasse est ouverte. Allez prendre une table — je viens vous trouver."
+    }
+  ],
+  "vocabulary": [
+    {
+      "word": "oat milk",
+      "definition": "A plant-based milk alternative made from oats.",
+      "example_sentence": "I switched to oat milk in my coffee last year.",
+      "translation": "lait d'avoine"
+    },
+    {
+      "word": "freshly baked",
+      "definition": "Made in an oven very recently.",
+      "example_sentence": "The smell of freshly baked bread filled the shop.",
+      "translation": "fraîchement cuit"
+    },
+    {
+      "word": "taking away",
+      "definition": "(British English) Buying food or drink to eat elsewhere, not on the premises.",
+      "example_sentence": "I'll have a sandwich to take away, please.",
+      "translation": "à emporter"
+    },
+    {
+      "word": "allergy",
+      "definition": "A medical condition causing a bad reaction to a substance.",
+      "example_sentence": "She has a severe allergy to peanuts.",
+      "translation": "allergie"
+    },
+    {
+      "word": "contactless",
+      "definition": "A payment method using a card or phone held near a reader, no PIN needed.",
+      "example_sentence": "Do you accept contactless payments?",
+      "translation": "sans contact (paiement)"
+    },
+    {
+      "word": "terrace",
+      "definition": "An outdoor seating area next to a café or restaurant.",
+      "example_sentence": "We sat on the terrace to enjoy the evening air.",
+      "translation": "terrasse"
+    }
+  ]
+}

@@ -37,7 +37,19 @@ class TtsService {
 
   Future<void> speak(String text) async {
     await _tts.stop();
-    await _tts.speak(text);
+    await _tts.speak(_clean(text));
+  }
+
+  /// Strip markdown symbols that TTS would read aloud literally.
+  static String _clean(String text) {
+    return text
+        .replaceAll(RegExp(r'\*+'), '')      // *word* / **word**
+        .replaceAll(RegExp(r'_+'), '')        // _word_ / __word__
+        .replaceAll(RegExp(r'#+\s*'), '')     // # headers
+        .replaceAll('`', '')                  // `code`
+        .replaceAll(RegExp(r'\[([^\]]+)\]\([^\)]+\)'), r'$1') // [text](url)
+        .replaceAll(RegExp(r'\n{2,}'), '\n') // collapse blank lines
+        .trim();
   }
 
   Future<void> stop() async {

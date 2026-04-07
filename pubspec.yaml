@@ -75,3 +75,7 @@ flutter:
 
   assets:
     - .env
+    - assets/content/manifest.json
+    - assets/content/lessons/travel_hotel.json
+    - assets/content/lessons/work_interview.json
+    - assets/content/lessons/daily_coffee.json

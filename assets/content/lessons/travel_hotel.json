@@ -1,0 +1,127 @@
+{
+  "id": "travel_hotel",
+  "title": "Checking into a Hotel",
+  "description": "Practise checking in at the front desk, asking about facilities and handling a room issue.",
+  "domain": "travel",
+  "level": "b1",
+  "duration_seconds": 210,
+  "emoji": "🏨",
+  "transcript": [
+    {
+      "index": 0,
+      "speaker": "receptionist",
+      "text": "Good evening! Welcome to the Grand Plaza Hotel. Do you have a reservation?",
+      "translation": "Bonsoir ! Bienvenue au Grand Plaza Hotel. Avez-vous une réservation ?"
+    },
+    {
+      "index": 1,
+      "speaker": "guest",
+      "text": "Yes, I do. The booking is under the name Sarah Collins.",
+      "translation": "Oui, j'en ai une. La réservation est au nom de Sarah Collins."
+    },
+    {
+      "index": 2,
+      "speaker": "receptionist",
+      "text": "Let me pull that up for you. Here we are — a superior double room, checking out on Friday. Is that correct?",
+      "translation": "Je vais chercher ça pour vous. Voilà — une chambre double supérieure, départ vendredi. C'est bien ça ?"
+    },
+    {
+      "index": 3,
+      "speaker": "guest",
+      "text": "Yes, that's right. Could I possibly get a room on a higher floor? I love the view.",
+      "translation": "Oui, c'est exact. Serait-il possible d'avoir une chambre à un étage supérieur ? J'adore la vue."
+    },
+    {
+      "index": 4,
+      "speaker": "receptionist",
+      "text": "Absolutely. I'll upgrade you to the fourteenth floor at no extra charge. You'll have a lovely view of the river.",
+      "translation": "Absolument. Je vais vous surclasser au quatorzième étage sans frais supplémentaires. Vous aurez une belle vue sur la rivière."
+    },
+    {
+      "index": 5,
+      "speaker": "guest",
+      "text": "That's wonderful, thank you! Does the room have Wi-Fi?",
+      "translation": "C'est formidable, merci ! Est-ce que la chambre a le Wi-Fi ?"
+    },
+    {
+      "index": 6,
+      "speaker": "receptionist",
+      "text": "Yes, complimentary high-speed Wi-Fi is available throughout the hotel. The password is on the welcome card in your room.",
+      "translation": "Oui, le Wi-Fi haut débit est gratuit dans tout l'hôtel. Le mot de passe se trouve sur la carte de bienvenue dans votre chambre."
+    },
+    {
+      "index": 7,
+      "speaker": "guest",
+      "text": "Perfect. And what time is breakfast served?",
+      "translation": "Parfait. Et à quelle heure est servi le petit-déjeuner ?"
+    },
+    {
+      "index": 8,
+      "speaker": "receptionist",
+      "text": "Breakfast is served in the restaurant on the ground floor from six-thirty to ten-thirty. It's a full buffet.",
+      "translation": "Le petit-déjeuner est servi au restaurant au rez-de-chaussée de six heures et demie à dix heures et demie. C'est un buffet complet."
+    },
+    {
+      "index": 9,
+      "speaker": "guest",
+      "text": "Brilliant. One last thing — I noticed a strange noise coming from the air conditioning when I walked past a room earlier. Is that something to be aware of?",
+      "translation": "Parfait. Une dernière chose — j'ai remarqué un bruit étrange venant de la climatisation en passant devant une chambre. Est-ce quelque chose dont je dois être conscient ?"
+    },
+    {
+      "index": 10,
+      "speaker": "receptionist",
+      "text": "I apologise for any inconvenience. Our maintenance team is already dealing with it. Your room has a brand-new unit, so you shouldn't have any issues.",
+      "translation": "Je m'excuse pour tout inconvénient. Notre équipe de maintenance s'en occupe déjà. Votre chambre a une unité toute neuve, donc vous ne devriez pas avoir de problèmes."
+    },
+    {
+      "index": 11,
+      "speaker": "guest",
+      "text": "Great, that's reassuring. Thank you for all your help.",
+      "translation": "Très bien, c'est rassurant. Merci de votre aide."
+    },
+    {
+      "index": 12,
+      "speaker": "receptionist",
+      "text": "My pleasure. Here is your key card. The lift is just around the corner. Enjoy your stay!",
+      "translation": "Avec plaisir. Voici votre carte-clé. L'ascenseur est juste au coin. Bon séjour !"
+    }
+  ],
+  "vocabulary": [
+    {
+      "word": "reservation",
+      "definition": "An arrangement to have a room, seat, or table kept for your use.",
+      "example_sentence": "I made a reservation for two nights online.",
+      "translation": "réservation"
+    },
+    {
+      "word": "upgrade",
+      "definition": "To give someone a better room, seat, or service than they originally paid for.",
+      "example_sentence": "The receptionist upgraded us to a suite for free.",
+      "translation": "surclassement / amélioration"
+    },
+    {
+      "word": "complimentary",
+      "definition": "Given free of charge as a courtesy.",
+      "example_sentence": "The hotel offers complimentary breakfast every morning.",
+      "translation": "gratuit, offert"
+    },
+    {
+      "word": "maintenance",
+      "definition": "The work of keeping something in good condition.",
+      "example_sentence": "The maintenance team fixed the broken lift quickly.",
+      "translation": "maintenance, entretien"
+    },
+    {
+      "word": "inconvenience",
+      "definition": "A mild difficulty or problem causing slight trouble.",
+      "example_sentence": "We apologise for any inconvenience during our renovation.",
+      "translation": "inconvénient, désagrément"
+    },
+    {
+      "word": "key card",
+      "definition": "A plastic card used like a key to open hotel room doors.",
+      "example_sentence": "Swipe your key card against the door to enter.",
+      "translation": "carte-clé"
+    }
+  ]
+}

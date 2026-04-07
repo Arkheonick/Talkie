@@ -1,0 +1,127 @@
+{
+  "id": "work_interview",
+  "title": "Job Interview at a Tech Company",
+  "description": "Navigate a job interview, discuss your experience and handle tricky questions with confidence.",
+  "domain": "work",
+  "level": "b2",
+  "duration_seconds": 240,
+  "emoji": "💼",
+  "transcript": [
+    {
+      "index": 0,
+      "speaker": "interviewer",
+      "text": "Good morning! Please come in and take a seat. I'm Rachel, the Head of Product here at Nexora.",
+      "translation": "Bonjour ! Entrez et asseyez-vous. Je suis Rachel, Directrice Produit ici à Nexora."
+    },
+    {
+      "index": 1,
+      "speaker": "candidate",
+      "text": "Thank you, Rachel. It's a pleasure to meet you. I've been looking forward to this interview.",
+      "translation": "Merci, Rachel. C'est un plaisir de vous rencontrer. J'attendais cet entretien avec impatience."
+    },
+    {
+      "index": 2,
+      "speaker": "interviewer",
+      "text": "Likewise. So, could you start by walking me through your background and what drew you to this role?",
+      "translation": "De même. Pourriez-vous commencer par me présenter votre parcours et ce qui vous a attiré vers ce poste ?"
+    },
+    {
+      "index": 3,
+      "speaker": "candidate",
+      "text": "Of course. I've spent the last five years in product management at a Series B fintech startup. I was responsible for the core payment flows, and we grew our user base from fifty thousand to over a million.",
+      "translation": "Bien sûr. J'ai passé les cinq dernières années en gestion de produit dans une startup fintech en Série B. J'étais responsable des flux de paiement principaux, et nous avons fait croître notre base d'utilisateurs de cinquante mille à plus d'un million."
+    },
+    {
+      "index": 4,
+      "speaker": "interviewer",
+      "text": "Impressive. What would you say was your biggest achievement in that role?",
+      "translation": "Impressionnant. Quelle serait selon vous votre plus grande réalisation dans ce poste ?"
+    },
+    {
+      "index": 5,
+      "speaker": "candidate",
+      "text": "I'd say redesigning the onboarding flow. We reduced drop-off by forty percent within three months by running A/B tests and speaking directly with users.",
+      "translation": "Je dirais la refonte du processus d'intégration. Nous avons réduit le taux d'abandon de quarante pour cent en trois mois en effectuant des tests A/B et en parlant directement avec les utilisateurs."
+    },
+    {
+      "index": 6,
+      "speaker": "interviewer",
+      "text": "That's exactly the kind of outcome we value here. Now, tell me about a time you faced a significant setback. How did you handle it?",
+      "translation": "C'est exactement le type de résultat que nous valorisons ici. Maintenant, parlez-moi d'un moment où vous avez fait face à un revers important. Comment l'avez-vous géré ?"
+    },
+    {
+      "index": 7,
+      "speaker": "candidate",
+      "text": "We once launched a feature that our sales team loved but that users completely ignored. Rather than pushing it, I advocated for pulling it back, analysing the feedback, and rebuilding it from scratch. It was humbling, but the second version became one of our most-used features.",
+      "translation": "Nous avons une fois lancé une fonctionnalité que notre équipe commerciale adorait mais que les utilisateurs ont complètement ignorée. Plutôt que de la promouvoir, j'ai préconisé de la retirer, d'analyser les retours et de la reconstruire de zéro. C'était une leçon d'humilité, mais la deuxième version est devenue l'une de nos fonctionnalités les plus utilisées."
+    },
+    {
+      "index": 8,
+      "speaker": "interviewer",
+      "text": "I appreciate that honesty. What are your salary expectations for this position?",
+      "translation": "J'apprécie cette honnêteté. Quelles sont vos attentes salariales pour ce poste ?"
+    },
+    {
+      "index": 9,
+      "speaker": "candidate",
+      "text": "Based on my research and experience, I'm looking for something in the range of ninety to a hundred and five thousand pounds, depending on the full package.",
+      "translation": "Sur la base de mes recherches et de mon expérience, je recherche quelque chose dans la fourchette de quatre-vingt-dix à cent cinq mille livres, selon l'ensemble du package."
+    },
+    {
+      "index": 10,
+      "speaker": "interviewer",
+      "text": "That's within our range. Do you have any questions for us?",
+      "translation": "C'est dans notre fourchette. Avez-vous des questions pour nous ?"
+    },
+    {
+      "index": 11,
+      "speaker": "candidate",
+      "text": "Yes — could you tell me more about how the product and engineering teams collaborate here? And what does success look like in this role after the first six months?",
+      "translation": "Oui — pourriez-vous m'en dire plus sur la façon dont les équipes produit et ingénierie collaborent ici ? Et à quoi ressemble le succès dans ce rôle après les six premiers mois ?"
+    },
+    {
+      "index": 12,
+      "speaker": "interviewer",
+      "text": "Great questions. We work in cross-functional squads, so you'd be embedded with engineers and designers daily. After six months, we'd expect you to have shipped at least one major feature end to end.",
+      "translation": "Excellentes questions. Nous travaillons en équipes cross-fonctionnelles, donc vous seriez intégré avec des ingénieurs et des designers au quotidien. Après six mois, nous attendrions de vous que vous ayez livré au moins une fonctionnalité majeure de bout en bout."
+    }
+  ],
+  "vocabulary": [
+    {
+      "word": "walk me through",
+      "definition": "To explain something step by step.",
+      "example_sentence": "Could you walk me through your decision-making process?",
+      "translation": "me guider à travers, m'expliquer étape par étape"
+    },
+    {
+      "word": "drop-off",
+      "definition": "A decrease in number; in UX, when users abandon a process.",
+      "example_sentence": "We saw a significant drop-off at the payment step.",
+      "translation": "taux d'abandon, diminution"
+    },
+    {
+      "word": "setback",
+      "definition": "A problem that delays or prevents progress.",
+      "example_sentence": "Losing our lead developer was a major setback for the team.",
+      "translation": "revers, contretemps"
+    },
+    {
+      "word": "advocate for",
+      "definition": "To publicly recommend or support a course of action.",
+      "example_sentence": "She advocated for a more user-centred design approach.",
+      "translation": "défendre, plaider pour"
+    },
+    {
+      "word": "humbling",
+      "definition": "Making you feel less proud and more aware of your own limitations.",
+      "example_sentence": "Failing publicly was humbling but taught me a lot.",
+      "translation": "humiliant (dans le bon sens), qui fait réfléchir"
+    },
+    {
+      "word": "cross-functional",
+      "definition": "Involving people from different departments working together.",
+      "example_sentence": "We formed a cross-functional team to solve the problem faster.",
+      "translation": "transversal, pluridisciplinaire"
+    }
+  ]
+}

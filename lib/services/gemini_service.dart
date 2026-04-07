@@ -1,11 +1,15 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import '../models/session.dart';
 import '../models/vocabulary_entry.dart';
+import '../models/lesson.dart';
+import '../models/cefr_level.dart';
 
 class GeminiService {
   GenerativeModel? _model;
+  GenerativeModel? _generationModel; // dedicated model with higher token limit
   ChatSession? _chat;
 
   static const Map<String, Map<String, String>> _scenarios = {
@@ -43,6 +47,15 @@ class GeminiService {
       generationConfig: GenerationConfig(
         temperature: 0.85,
         maxOutputTokens: 400,
+      ),
+    );
+    // Dedicated model for lesson generation — needs much more tokens
+    _generationModel = GenerativeModel(
+      model: 'gemini-2.5-flash',
+      apiKey: apiKey,
+      generationConfig: GenerationConfig(
+        temperature: 0.8,
+        maxOutputTokens: 2500,
       ),
     );
   }
@@ -139,8 +152,123 @@ Return ONLY a JSON array (no markdown, no explanation):
     }
   }
 
+  Future<Lesson?> generateLesson(String context, CefrLevel level) async {
+    if (_generationModel == null) return null;
+    final id = 'gen_${DateTime.now().millisecondsSinceEpoch}';
+    final prompt = '''
+Generate an authentic English learning dialogue based on this context: "$context"
+Student level: ${level.code}
+
+Return ONLY a raw JSON object — absolutely no markdown, no code fences, no explanation before or after.
+The JSON must exactly match this structure:
+
+{"id":"$id","title":"...","description":"...","domain":"daily","level":"${level.code.toLowerCase()}","duration_seconds":180,"emoji":"...","transcript":[{"index":0,"speaker":"role","text":"...","translation":"..."},{"index":1,"speaker":"role","text":"...","translation":"..."}],"vocabulary":[{"word":"...","definition":"...","example_sentence":"...","translation":"..."}]}
+
+Strict requirements:
+- 10 to 14 exchanges in the transcript
+- Natural, realistic dialogue — not textbook, not formal
+- Speaker labels: short role names matching the context (receptionist, customer, doctor, patient, friend, colleague, etc.)
+- 5 to 6 vocabulary items, relevant to the dialogue
+- All "translation" values in French
+- Adapt complexity to ${level.code} level
+- emoji: one emoji representing the topic
+- domain: pick from travel, work, daily, culture, tech, health, social
+- No asterisks, no markdown, no special characters in text fields
+''';
+
+    try {
+      final response = await _generationModel!.generateContent(
+        [Content.text(prompt)],
+      );
+      final raw = response.text ?? '';
+      final jsonStr = _extractJsonObject(raw);
+      if (jsonStr.isEmpty) return null;
+      return Lesson.fromJson(jsonDecode(jsonStr) as Map<String, dynamic>);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Extracts the first complete JSON object from a string,
+  /// stripping any surrounding markdown fences or prose.
+  static String _extractJsonObject(String raw) {
+    final cleaned = raw
+        .replaceAll('```json', '')
+        .replaceAll('```', '')
+        .trim();
+    final start = cleaned.indexOf('{');
+    final end = cleaned.lastIndexOf('}');
+    if (start == -1 || end == -1 || end <= start) return '';
+    return cleaned.substring(start, end + 1);
+  }
+
+  void startLessonChat(Lesson lesson, CefrLevel level) {
+    assert(_model != null, 'Call init() before startLessonChat()');
+    final prompt = _buildLessonPrompt(lesson, level);
+    _chat = _model!.startChat(history: [
+      Content.model([TextPart(prompt)]),
+    ]);
+  }
+
+  void startFreeConversation(CefrLevel level) {
+    assert(_model != null, 'Call init() before startFreeConversation()');
+    final prompt = _buildFreeConversationPrompt(level);
+    _chat = _model!.startChat(history: [
+      Content.model([TextPart(prompt)]),
+    ]);
+  }
+
   void endSession() {
     _chat = null;
+  }
+
+  String _buildLessonPrompt(Lesson lesson, CefrLevel level) {
+    return '''
+You are Alex, a friendly and encouraging English teacher.
+The student (${level.code} level, French speaker) has just listened to a lesson: "${lesson.title}".
+
+Your role is to:
+1. Discuss the content of the lesson, ask comprehension questions, explore vocabulary
+2. Correct grammar and vocabulary errors warmly
+3. Introduce related expressions relevant to the lesson topic
+4. Keep the student speaking in English
+
+The lesson vocabulary includes: ${lesson.vocabulary.map((v) => v.word).join(', ')}.
+
+CRITICAL FORMAT RULES — your output is read by a text-to-speech engine:
+- NEVER use asterisks, underscores, hashtags, bullet points, or any markdown formatting
+- NEVER use symbols like *, **, _, __, #, or backticks
+- Write corrections as plain speech: say "We would say X instead of Y" not "*X*"
+- Plain text only, as if speaking face to face
+
+Keep responses under 80 words. Ask one question at a time. Adapt to the ${level.code} level.
+Start by welcoming the student and asking a simple question about the lesson.
+''';
+  }
+
+  String _buildFreeConversationPrompt(CefrLevel level) {
+    return '''
+You are Alex, an expert English teacher helping French adults improve their spoken English.
+
+Student level: ${level.code} (${level.labelFr})
+
+Your approach:
+Have a natural, engaging conversation on any topic the student chooses.
+After each student response, gently correct one error if present.
+Introduce one useful expression per exchange.
+Ask open-ended follow-up questions to keep the student talking.
+Adapt vocabulary complexity to ${level.code} level.
+Be warm, encouraging, and conversational.
+
+CRITICAL FORMAT RULES — your output is read by a text-to-speech engine:
+- NEVER use asterisks, underscores, hashtags, bullet points, or any markdown formatting
+- NEVER use symbols like *, **, _, __, #, or backticks
+- Write corrections as plain spoken English: say "We would say X instead of Y" not "*X*"
+- Plain text only — no formatting whatsoever, as if speaking out loud
+
+Keep all responses under 100 words. Speak naturally.
+Start by greeting the student and asking what they would like to talk about today.
+''';
   }
 
   String _buildSystemPrompt(String topicId, String topicTitle) {
