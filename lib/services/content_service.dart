@@ -53,6 +53,7 @@ class ContentService {
     'travel': {'label': 'Voyage', 'emoji': '✈️'},
     'work': {'label': 'Travail', 'emoji': '💼'},
     'daily': {'label': 'Quotidien', 'emoji': '☕'},
+    'sport': {'label': 'Sport', 'emoji': '🏋️'},
     'culture': {'label': 'Culture', 'emoji': '🎨'},
     'tech': {'label': 'Tech', 'emoji': '💻'},
     'health': {'label': 'Santé', 'emoji': '🏥'},

@@ -1,0 +1,127 @@
+{
+  "id": "sport_gym",
+  "title": "First Session with a Personal Trainer",
+  "description": "Book a fitness assessment and discuss your goals with a personal trainer at the gym.",
+  "domain": "sport",
+  "level": "b1",
+  "duration_seconds": 195,
+  "emoji": "🏋️",
+  "transcript": [
+    {
+      "index": 0,
+      "speaker": "trainer",
+      "text": "Hi! Welcome to FitCore. I'm Jake, your personal trainer for today. Have you trained with a coach before?",
+      "translation": "Salut ! Bienvenue chez FitCore. Je suis Jake, ton coach personnel pour aujourd'hui. Tu as déjà travaillé avec un coach ?"
+    },
+    {
+      "index": 1,
+      "speaker": "client",
+      "text": "Not really. I go to the gym sometimes, but I never follow a proper programme.",
+      "translation": "Pas vraiment. Je vais parfois à la salle, mais je ne suis jamais un programme précis."
+    },
+    {
+      "index": 2,
+      "speaker": "trainer",
+      "text": "That's totally fine — that's exactly why we're here. What are your main fitness goals?",
+      "translation": "C'est tout à fait normal — c'est exactement pour ça qu'on est là. Quels sont tes principaux objectifs fitness ?"
+    },
+    {
+      "index": 3,
+      "speaker": "client",
+      "text": "I want to lose a bit of weight and build some muscle. I also get out of breath quite quickly, so I'd like to improve my stamina.",
+      "translation": "Je veux perdre un peu de poids et prendre un peu de muscle. Je manque aussi vite de souffle, donc j'aimerais améliorer mon endurance."
+    },
+    {
+      "index": 4,
+      "speaker": "trainer",
+      "text": "Great goals. How many days a week can you realistically commit to training?",
+      "translation": "Excellents objectifs. Combien de jours par semaine peux-tu t'engager à t'entraîner de façon réaliste ?"
+    },
+    {
+      "index": 5,
+      "speaker": "client",
+      "text": "Maybe three times a week. My schedule is quite busy, so I can't always guarantee more than that.",
+      "translation": "Peut-être trois fois par semaine. Mon emploi du temps est assez chargé, donc je ne peux pas toujours garantir plus."
+    },
+    {
+      "index": 6,
+      "speaker": "trainer",
+      "text": "Three sessions is perfect to start. We'll combine cardio and strength training. Do you have any injuries or physical limitations I should know about?",
+      "translation": "Trois séances c'est parfait pour commencer. On va combiner cardio et musculation. As-tu des blessures ou des limitations physiques que je dois connaître ?"
+    },
+    {
+      "index": 7,
+      "speaker": "client",
+      "text": "I had a knee injury last year, but it's mostly healed. I just need to be careful with heavy squats.",
+      "translation": "J'ai eu une blessure au genou l'année dernière, mais c'est presque guéri. Je dois juste faire attention aux squats lourds."
+    },
+    {
+      "index": 8,
+      "speaker": "trainer",
+      "text": "Noted. We'll avoid any high-impact exercises on the knee and modify the movements accordingly. Does that work for you?",
+      "translation": "Noté. On va éviter tout exercice à fort impact sur le genou et adapter les mouvements en conséquence. Ça te convient ?"
+    },
+    {
+      "index": 9,
+      "speaker": "client",
+      "text": "Yes, that sounds good. Should I bring anything specific to the sessions?",
+      "translation": "Oui, ça me convient. Dois-je apporter quelque chose de particulier aux séances ?"
+    },
+    {
+      "index": 10,
+      "speaker": "trainer",
+      "text": "Just comfortable trainers and a water bottle. A towel is also recommended — it gets sweaty in here!",
+      "translation": "Juste des baskets confortables et une gourde. Une serviette est aussi recommandée — on transpire beaucoup ici !"
+    },
+    {
+      "index": 11,
+      "speaker": "client",
+      "text": "Ha, good to know! How long does each session usually last?",
+      "translation": "Ha, bon à savoir ! Combien de temps dure généralement chaque séance ?"
+    },
+    {
+      "index": 12,
+      "speaker": "trainer",
+      "text": "About fifty to sixty minutes, including warm-up and cool-down. We'll track your progress every four weeks and adjust the programme if needed.",
+      "translation": "Environ cinquante à soixante minutes, échauffement et retour au calme inclus. On suivra ta progression toutes les quatre semaines et on ajustera le programme si besoin."
+    }
+  ],
+  "vocabulary": [
+    {
+      "word": "stamina",
+      "definition": "The ability to sustain physical or mental effort for a long time.",
+      "example_sentence": "Running regularly helped her build stamina for the marathon.",
+      "translation": "endurance, résistance"
+    },
+    {
+      "word": "commit to",
+      "definition": "To dedicate yourself to something and follow through with it.",
+      "example_sentence": "Can you commit to three training sessions a week?",
+      "translation": "s'engager à, se consacrer à"
+    },
+    {
+      "word": "limitation",
+      "definition": "A restriction or weakness that prevents full performance.",
+      "example_sentence": "His back injury was a limitation during heavy lifts.",
+      "translation": "limitation, contrainte"
+    },
+    {
+      "word": "high-impact",
+      "definition": "Exercises that put significant stress on the joints, like jumping.",
+      "example_sentence": "Avoid high-impact activities if your knees are sore.",
+      "translation": "fort impact (exercices)"
+    },
+    {
+      "word": "warm-up",
+      "definition": "Light exercises done before a workout to prepare the body.",
+      "example_sentence": "Always do a five-minute warm-up before training.",
+      "translation": "échauffement"
+    },
+    {
+      "word": "track progress",
+      "definition": "To regularly monitor and record improvement over time.",
+      "example_sentence": "We track your progress every month to adjust the plan.",
+      "translation": "suivre sa progression"
+    }
+  ]
+}

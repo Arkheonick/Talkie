@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../app/theme.dart';
+import '../../models/cefr_level.dart';
 import '../../models/lesson.dart';
 import '../../models/user_profile.dart';
 import '../../services/audio_recorder_service.dart';
@@ -31,6 +32,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   bool _isGenerating = false;
   bool _isRecording = false;
   bool _isTranscribing = false;
+  bool _levelOpen = false;
   List<Lesson> _generatedLessons = [];
 
   @override
@@ -58,11 +60,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
     super.dispose();
   }
 
-  // ── Mic recording ──────────────────────────────────────────────────────────
+  Future<void> _selectLevel(CefrLevel level) async {
+    _profile.level = level;
+    await _profileService.save(_profile);
+    setState(() => _levelOpen = false);
+  }
 
   Future<void> _toggleRecording() async {
     if (_isGenerating || _isTranscribing) return;
-
     if (_isRecording) {
       setState(() {
         _isRecording = false;
@@ -81,7 +86,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
       if (mounted) setState(() => _isTranscribing = false);
       return;
     }
-
     final status = await Permission.microphone.request();
     if (!status.isGranted) {
       if (mounted) {
@@ -94,8 +98,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
     await _recorder.startRecording();
     setState(() => _isRecording = true);
   }
-
-  // ── Generate ───────────────────────────────────────────────────────────────
 
   Future<void> _generate() async {
     final text = _textController.text.trim();
@@ -133,15 +135,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
           },
         ),
       ),
-    );
+    ).then((_) => setState(() => _generatedLessons = _generatedService.loadAll()));
   }
 
   Future<void> _deleteGenerated(String id) async {
     await _generatedService.delete(id);
     setState(() => _generatedLessons = _generatedService.loadAll());
   }
-
-  // ── Build ──────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -167,102 +167,83 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   profile: _profile,
                   onLessonTap: _openLesson,
                 )
-              : _MainView(
-                  domains: _contentService.domains,
-                  generatedLessons: _generatedLessons,
-                  profile: _profile,
-                  textController: _textController,
-                  isGenerating: _isGenerating,
-                  isRecording: _isRecording,
-                  isTranscribing: _isTranscribing,
-                  onDomainSelect: (d) => setState(() => _selectedDomain = d),
-                  onToggleRecording: _toggleRecording,
-                  onGenerate: _generate,
-                  onOpenLesson: _openLesson,
-                  onDeleteGenerated: _deleteGenerated,
-                ),
+              : _buildMainView(),
     );
   }
-}
 
-// ── Main view (domains + custom theme) ────────────────────────────────────────
-
-class _MainView extends StatelessWidget {
-  final List<String> domains;
-  final List<Lesson> generatedLessons;
-  final UserProfile profile;
-  final TextEditingController textController;
-  final bool isGenerating;
-  final bool isRecording;
-  final bool isTranscribing;
-  final void Function(String) onDomainSelect;
-  final VoidCallback onToggleRecording;
-  final VoidCallback onGenerate;
-  final void Function(Lesson) onOpenLesson;
-  final void Function(String) onDeleteGenerated;
-
-  const _MainView({
-    required this.domains,
-    required this.generatedLessons,
-    required this.profile,
-    required this.textController,
-    required this.isGenerating,
-    required this.isRecording,
-    required this.isTranscribing,
-    required this.onDomainSelect,
-    required this.onToggleRecording,
-    required this.onGenerate,
-    required this.onOpenLesson,
-    required this.onDeleteGenerated,
-  });
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildMainView() {
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       children: [
-        // ── Section : Choisir un domaine ──────────────────────────────────
-        const _SectionTitle(
-          title: 'Choisir un domaine',
-          subtitle: 'Des dialogues authentiques par thématique',
+        // ── 1. Sélecteur de niveau ─────────────────────────────────────
+        _LevelTile(
+          profile: _profile,
+          isOpen: _levelOpen,
+          onToggle: () => setState(() => _levelOpen = !_levelOpen),
+          onSelect: _selectLevel,
         ),
         const SizedBox(height: 14),
+
+        // ── 2. Génère un dialogue ──────────────────────────────────────
+        _SectionLabel(
+          title: 'Génère un dialogue',
+          subtitle:
+              'Décris une situation en français ou en anglais.\nEx : "un médecin et un patient, consultation pour une douleur au dos à Paris"',
+        ),
+        const SizedBox(height: 10),
+        _GenerateCard(
+          controller: _textController,
+          isGenerating: _isGenerating,
+          isRecording: _isRecording,
+          isTranscribing: _isTranscribing,
+          onToggleRecording: _toggleRecording,
+          onGenerate: _generate,
+        ),
+        const SizedBox(height: 24),
+
+        // ── 3. Thème ───────────────────────────────────────────────────
+        const _SectionLabel(title: 'Thème'),
+        const SizedBox(height: 10),
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
-            mainAxisSpacing: 10,
-            crossAxisSpacing: 10,
-            childAspectRatio: 1.4,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            childAspectRatio: 3.2,
           ),
-          itemCount: domains.length,
+          itemCount: _contentService.domains.length,
           itemBuilder: (_, i) {
-            final domain = domains[i];
+            final domain = _contentService.domains[i];
             final meta = ContentService.domainMeta[domain] ??
                 {'label': domain, 'emoji': '📖'};
             return GestureDetector(
-              onTap: () => onDomainSelect(domain),
+              onTap: () => setState(() => _selectedDomain = domain),
               child: Container(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppTheme.border),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Row(
                   children: [
-                    Text(meta['emoji']!, style: const TextStyle(fontSize: 26)),
-                    Text(
-                      meta['label']!,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                        color: AppTheme.onSurface,
+                    Text(meta['emoji']!, style: const TextStyle(fontSize: 20)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        meta['label']!,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          color: AppTheme.onSurface,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    const Icon(Icons.chevron_right_rounded,
+                        size: 16, color: AppTheme.muted),
                   ],
                 ),
               ),
@@ -270,34 +251,16 @@ class _MainView extends StatelessWidget {
           },
         ),
 
-        const SizedBox(height: 32),
-
-        // ── Section : Choisir mon thème ───────────────────────────────────
-        const _SectionTitle(
-          title: 'Choisir mon thème',
-          subtitle: 'Génère un dialogue sur le contexte de ton choix',
-        ),
-        const SizedBox(height: 14),
-        _ThemeInputCard(
-          controller: textController,
-          isGenerating: isGenerating,
-          isRecording: isRecording,
-          isTranscribing: isTranscribing,
-          profile: profile,
-          onToggleRecording: onToggleRecording,
-          onGenerate: onGenerate,
-        ),
-
-        // ── Leçons générées ───────────────────────────────────────────────
-        if (generatedLessons.isNotEmpty) ...[
-          const SizedBox(height: 28),
-          const _SectionTitle(title: 'Mes dialogues générés'),
-          const SizedBox(height: 12),
-          ...generatedLessons.map((l) => _GeneratedLessonCard(
+        // ── 4. Dialogues générés ───────────────────────────────────────
+        if (_generatedLessons.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          const _SectionLabel(title: 'Mes dialogues'),
+          const SizedBox(height: 10),
+          ..._generatedLessons.map((l) => _GeneratedCard(
                 lesson: l,
-                isCompleted: profile.completedLessonIds.contains(l.id),
-                onTap: () => onOpenLesson(l),
-                onDelete: () => onDeleteGenerated(l.id),
+                isCompleted: _profile.completedLessonIds.contains(l.id),
+                onTap: () => _openLesson(l),
+                onDelete: () => _deleteGenerated(l.id),
               )),
         ],
 
@@ -307,23 +270,203 @@ class _MainView extends StatelessWidget {
   }
 }
 
-// ── Theme input card ──────────────────────────────────────────────────────────
+// ── Level tile ─────────────────────────────────────────────────────────────────
 
-class _ThemeInputCard extends StatelessWidget {
+class _LevelTile extends StatelessWidget {
+  final UserProfile profile;
+  final bool isOpen;
+  final VoidCallback onToggle;
+  final void Function(CefrLevel) onSelect;
+
+  const _LevelTile({
+    required this.profile,
+    required this.isOpen,
+    required this.onToggle,
+    required this.onSelect,
+  });
+
+  static const _levels = [
+    (CefrLevel.a1, 'Je commence tout juste'),
+    (CefrLevel.a2, 'Je connais les bases'),
+    (CefrLevel.b1, 'Niveau intermédiaire'),
+    (CefrLevel.b2, 'Assez à l\'aise'),
+    (CefrLevel.c1, 'Niveau avancé'),
+    (CefrLevel.c2, 'Maîtrise'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isOpen ? AppTheme.primary : AppTheme.border,
+          width: isOpen ? 1.5 : 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          GestureDetector(
+            onTap: onToggle,
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: isOpen ? AppTheme.primary : AppTheme.primaryLight,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Center(
+                      child: Text(
+                        profile.level.code,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                          color: isOpen ? Colors.white : AppTheme.primary,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Mon niveau',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                            color: AppTheme.onSurface,
+                          ),
+                        ),
+                        Text(
+                          profile.level.labelFr,
+                          style: const TextStyle(
+                              fontSize: 12, color: AppTheme.muted),
+                        ),
+                      ],
+                    ),
+                  ),
+                  AnimatedRotation(
+                    turns: isOpen ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: const Icon(Icons.keyboard_arrow_down_rounded,
+                        color: AppTheme.muted),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          AnimatedCrossFade(
+            duration: const Duration(milliseconds: 200),
+            crossFadeState:
+                isOpen ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+            firstChild: const SizedBox(width: double.infinity),
+            secondChild: Column(
+              children: [
+                const Divider(height: 1, color: AppTheme.border),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                  child: Column(
+                    children: _levels.map(((CefrLevel, String) info) {
+                      final (level, label) = info;
+                      final isSelected = profile.level == level;
+                      return GestureDetector(
+                        onTap: () => onSelect(level),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          margin: const EdgeInsets.only(bottom: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? AppTheme.primaryLight
+                                : AppTheme.surface,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: isSelected
+                                  ? AppTheme.primary
+                                  : AppTheme.border,
+                              width: isSelected ? 1.5 : 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 38,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? AppTheme.primary
+                                      : Colors.white,
+                                  borderRadius: BorderRadius.circular(7),
+                                  border: Border.all(color: AppTheme.border),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    level.code,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 12,
+                                      color: isSelected
+                                          ? Colors.white
+                                          : AppTheme.muted,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  label,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppTheme.onSurface,
+                                  ),
+                                ),
+                              ),
+                              if (isSelected)
+                                const Icon(Icons.check_circle_rounded,
+                                    color: AppTheme.primary, size: 18),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Generate card ──────────────────────────────────────────────────────────────
+
+class _GenerateCard extends StatelessWidget {
   final TextEditingController controller;
   final bool isGenerating;
   final bool isRecording;
   final bool isTranscribing;
-  final UserProfile profile;
   final VoidCallback onToggleRecording;
   final VoidCallback onGenerate;
 
-  const _ThemeInputCard({
+  const _GenerateCard({
     required this.controller,
     required this.isGenerating,
     required this.isRecording,
     required this.isTranscribing,
-    required this.profile,
     required this.onToggleRecording,
     required this.onGenerate,
   });
@@ -332,10 +475,10 @@ class _ThemeInputCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final busy = isGenerating || isTranscribing;
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: isRecording ? const Color(0xFFEF4444) : AppTheme.border,
           width: isRecording ? 1.5 : 1,
@@ -344,26 +487,11 @@ class _ThemeInputCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Context hint
-          Text(
-            'Décris une situation en français ou en anglais',
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppTheme.muted,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Ex : "Un médecin et un patient, consultation pour une douleur au dos à Paris"',
-            style: const TextStyle(fontSize: 11, color: AppTheme.muted),
-          ),
-          const SizedBox(height: 12),
           // Text field
           Container(
             decoration: BoxDecoration(
               color: AppTheme.surface,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(10),
               border: Border.all(color: AppTheme.border),
             ),
             child: TextField(
@@ -376,12 +504,13 @@ class _ThemeInputCard extends StatelessWidget {
                 hintStyle: TextStyle(color: AppTheme.muted, fontSize: 13),
                 border: InputBorder.none,
                 contentPadding:
-                    EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               ),
               style: const TextStyle(fontSize: 14),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
+          // Mic + Generate side by side
           Row(
             children: [
               // Mic button
@@ -401,8 +530,8 @@ class _ThemeInputCard extends StatelessWidget {
                     boxShadow: isRecording
                         ? [
                             BoxShadow(
-                              color: const Color(0xFFEF4444).withValues(alpha: 0.35),
-                              blurRadius: 10,
+                              color: const Color(0xFFEF4444).withValues(alpha: 0.3),
+                              blurRadius: 8,
                               spreadRadius: 2,
                             )
                           ]
@@ -422,45 +551,62 @@ class _ThemeInputCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              // Status text
+              // Generate button — fills remaining width
               Expanded(
-                child: Text(
-                  isRecording
-                      ? '🔴 Enregistrement... tape pour arrêter'
-                      : isTranscribing
-                          ? 'Transcription...'
-                          : isGenerating
-                              ? 'Génération du dialogue...'
-                              : 'Niveau ${profile.level.code} · ${profile.level.labelFr}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isRecording
-                        ? const Color(0xFFEF4444)
-                        : AppTheme.muted,
-                    fontWeight: isRecording ? FontWeight.w600 : FontWeight.normal,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              // Generate button
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                child: ElevatedButton.icon(
-                  onPressed: busy || isRecording ? null : onGenerate,
-                  icon: isGenerating
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2),
-                        )
-                      : const Icon(Icons.auto_awesome_rounded, size: 16),
-                  label: const Text('Générer'),
-                  style: ElevatedButton.styleFrom(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                    disabledBackgroundColor: AppTheme.border,
+                child: SizedBox(
+                  height: 44,
+                  child: ElevatedButton(
+                    onPressed: busy || isRecording ? null : onGenerate,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primary,
+                      disabledBackgroundColor: isRecording
+                          ? const Color(0xFFEF4444).withValues(alpha: 0.1)
+                          : AppTheme.border,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: isGenerating
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                                color: Colors.white, strokeWidth: 2),
+                          )
+                        : isTranscribing
+                            ? const Text(
+                                'Transcription...',
+                                style: TextStyle(
+                                  color: AppTheme.muted,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              )
+                            : isRecording
+                                ? const Text(
+                                    '🔴 Enregistrement...',
+                                    style: TextStyle(
+                                      color: Color(0xFFEF4444),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  )
+                                : const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.auto_awesome_rounded,
+                                          size: 16, color: Colors.white),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'Générer',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                   ),
                 ),
               ),
@@ -474,13 +620,13 @@ class _ThemeInputCard extends StatelessWidget {
 
 // ── Generated lesson card ──────────────────────────────────────────────────────
 
-class _GeneratedLessonCard extends StatelessWidget {
+class _GeneratedCard extends StatelessWidget {
   final Lesson lesson;
   final bool isCompleted;
   final VoidCallback onTap;
   final VoidCallback onDelete;
 
-  const _GeneratedLessonCard({
+  const _GeneratedCard({
     required this.lesson,
     required this.isCompleted,
     required this.onTap,
@@ -505,17 +651,7 @@ class _GeneratedLessonCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF0F4FF),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Center(
-                child: Text(lesson.emoji, style: const TextStyle(fontSize: 22)),
-              ),
-            ),
+            Text(lesson.emoji, style: const TextStyle(fontSize: 24)),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -556,18 +692,19 @@ class _GeneratedLessonCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     lesson.description,
-                    style: const TextStyle(fontSize: 11, color: AppTheme.muted),
+                    style:
+                        const TextStyle(fontSize: 11, color: AppTheme.muted),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 5),
+                  const SizedBox(height: 4),
                   Wrap(
                     spacing: 6,
                     children: [
                       _chip(lesson.level.code, AppTheme.primary),
                       _chip('⏱ ${lesson.durationLabel}', AppTheme.muted),
                       if (isCompleted)
-                        _chip('✓ Terminé', AppTheme.accent,
+                        _chip('✓', AppTheme.accent,
                             bg: const Color(0xFFD1FAE5)),
                     ],
                   ),
@@ -578,7 +715,7 @@ class _GeneratedLessonCard extends StatelessWidget {
             Column(
               children: [
                 const Icon(Icons.play_circle_rounded,
-                    color: AppTheme.primary, size: 26),
+                    color: AppTheme.primary, size: 24),
                 const SizedBox(height: 4),
                 GestureDetector(
                   onTap: onDelete,
@@ -601,7 +738,8 @@ class _GeneratedLessonCard extends StatelessWidget {
         ),
         child: Text(
           label,
-          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color),
+          style:
+              TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color),
         ),
       );
 }
@@ -624,11 +762,9 @@ class _LessonList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return lessons.isEmpty
-        ? Center(
-            child: Text(
-              'Aucun dialogue dans ce domaine.',
-              style: const TextStyle(color: AppTheme.muted),
-            ),
+        ? const Center(
+            child: Text('Aucun dialogue dans ce domaine.',
+                style: TextStyle(color: AppTheme.muted)),
           )
         : ListView.separated(
             padding: const EdgeInsets.all(16),
@@ -658,19 +794,15 @@ class _LessonList extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              l.title,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w600, fontSize: 15),
-                            ),
+                            Text(l.title,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w600, fontSize: 15)),
                             const SizedBox(height: 2),
-                            Text(
-                              l.description,
-                              style: const TextStyle(
-                                  fontSize: 12, color: AppTheme.muted),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                            Text(l.description,
+                                style: const TextStyle(
+                                    fontSize: 12, color: AppTheme.muted),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis),
                             const SizedBox(height: 6),
                             Wrap(
                               spacing: 6,
@@ -703,36 +835,43 @@ class _LessonList extends StatelessWidget {
         ),
         child: Text(
           label,
-          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
+          style:
+              TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
         ),
       );
 }
 
-// ── Shared widgets ─────────────────────────────────────────────────────────────
+// ── Section label ──────────────────────────────────────────────────────────────
 
-class _SectionTitle extends StatelessWidget {
+class _SectionLabel extends StatelessWidget {
   final String title;
   final String? subtitle;
-  const _SectionTitle({required this.title, this.subtitle});
+  const _SectionLabel({required this.title, this.subtitle});
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text(
           title,
+          textAlign: TextAlign.center,
           style: const TextStyle(
-            fontSize: 18,
+            fontSize: 17,
             fontWeight: FontWeight.w700,
             color: AppTheme.onSurface,
             letterSpacing: -0.3,
           ),
         ),
         if (subtitle != null)
-          Text(
-            subtitle!,
-            style: const TextStyle(fontSize: 13, color: AppTheme.muted),
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              subtitle!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  fontSize: 12, color: AppTheme.muted, height: 1.5),
+            ),
           ),
       ],
     );

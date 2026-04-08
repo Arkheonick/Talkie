@@ -49,13 +49,13 @@ class GeminiService {
         maxOutputTokens: 400,
       ),
     );
-    // Dedicated model for lesson generation — needs much more tokens
+    // Dedicated model for lesson generation — high token budget for thinking + JSON
     _generationModel = GenerativeModel(
       model: 'gemini-2.5-flash',
       apiKey: apiKey,
       generationConfig: GenerationConfig(
         temperature: 0.8,
-        maxOutputTokens: 2500,
+        maxOutputTokens: 8192,
       ),
     );
   }
@@ -172,34 +172,113 @@ Strict requirements:
 - All "translation" values in French
 - Adapt complexity to ${level.code} level
 - emoji: one emoji representing the topic
-- domain: pick from travel, work, daily, culture, tech, health, social
+- domain: pick from travel, work, daily, culture, tech, health, social, sport
+- duration_seconds: integer number (e.g. 180)
+- index in transcript: integer starting at 0
 - No asterisks, no markdown, no special characters in text fields
 ''';
 
-    try {
-      final response = await _generationModel!.generateContent(
-        [Content.text(prompt)],
-      );
-      final raw = response.text ?? '';
-      final jsonStr = _extractJsonObject(raw);
-      if (jsonStr.isEmpty) return null;
-      return Lesson.fromJson(jsonDecode(jsonStr) as Map<String, dynamic>);
-    } catch (_) {
-      return null;
+    for (int attempt = 0; attempt < 3; attempt++) {
+      try {
+        final response = await _generationModel!.generateContent(
+          [Content.text(prompt)],
+        );
+        final raw = response.text ?? '';
+        final jsonStr = _extractJsonObject(raw);
+        if (jsonStr.isEmpty) continue;
+        final decoded = _sanitizeGeneratedJson(
+          jsonDecode(jsonStr) as Map<String, dynamic>,
+          id,
+          level,
+        );
+        return Lesson.fromJson(decoded);
+      } catch (_) {
+        if (attempt == 2) return null;
+      }
     }
+    return null;
   }
 
-  /// Extracts the first complete JSON object from a string,
-  /// stripping any surrounding markdown fences or prose.
+  /// Fixes common Gemini output issues: numbers as strings/doubles, missing fields.
+  static Map<String, dynamic> _sanitizeGeneratedJson(
+    Map<String, dynamic> j,
+    String id,
+    CefrLevel level,
+  ) {
+    j['id'] = id;
+    j.putIfAbsent('level', () => level.code.toLowerCase());
+    j.putIfAbsent('domain', () => 'daily');
+    j.putIfAbsent('emoji', () => '🎧');
+
+    // duration_seconds must be int
+    final dur = j['duration_seconds'];
+    if (dur is double) {
+      j['duration_seconds'] = dur.toInt();
+    } else if (dur is String) {
+      j['duration_seconds'] = int.tryParse(dur) ?? 180;
+    }
+    j.putIfAbsent('duration_seconds', () => 180);
+
+    // Fix transcript indices
+    if (j['transcript'] is List) {
+      final transcript = (j['transcript'] as List).toList();
+      for (int i = 0; i < transcript.length; i++) {
+        if (transcript[i] is Map) {
+          final line = Map<String, dynamic>.from(transcript[i] as Map);
+          final idx = line['index'];
+          if (idx is double) {
+            line['index'] = idx.toInt();
+          } else if (idx is String) {
+            line['index'] = int.tryParse(idx) ?? i;
+          }
+          line.putIfAbsent('index', () => i);
+          transcript[i] = line;
+        }
+      }
+      j['transcript'] = transcript;
+    }
+
+    return j;
+  }
+
+  /// Extracts the rightmost complete JSON object that contains lesson fields.
+  /// Searches backwards to skip any thinking/preamble JSON fragments.
   static String _extractJsonObject(String raw) {
     final cleaned = raw
         .replaceAll('```json', '')
         .replaceAll('```', '')
         .trim();
-    final start = cleaned.indexOf('{');
-    final end = cleaned.lastIndexOf('}');
-    if (start == -1 || end == -1 || end <= start) return '';
-    return cleaned.substring(start, end + 1);
+
+    // Walk backwards through closing braces to find the rightmost valid lesson JSON
+    int searchFrom = cleaned.length - 1;
+    while (searchFrom >= 0) {
+      final end = cleaned.lastIndexOf('}', searchFrom);
+      if (end == -1) break;
+
+      // Find matching opening brace using brace counting
+      int depth = 0;
+      int start = -1;
+      for (int i = end; i >= 0; i--) {
+        if (cleaned[i] == '}') depth++;
+        if (cleaned[i] == '{') {
+          depth--;
+          if (depth == 0) {
+            start = i;
+            break;
+          }
+        }
+      }
+      if (start == -1) break;
+
+      final candidate = cleaned.substring(start, end + 1);
+      // Accept only if it looks like a lesson (has the required arrays)
+      if (candidate.contains('"transcript"') &&
+          candidate.contains('"vocabulary"')) {
+        return candidate;
+      }
+      searchFrom = start - 1;
+    }
+    return '';
   }
 
   void startLessonChat(Lesson lesson, CefrLevel level) {

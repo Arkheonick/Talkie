@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../app/theme.dart';
-import '../../models/cefr_level.dart';
 import '../../models/lesson.dart';
 import '../../models/user_profile.dart';
 import '../../services/generated_lesson_service.dart';
@@ -39,12 +38,6 @@ class _HomeScreenState extends State<HomeScreen> {
       _generatedLessons = _generatedService.loadAll();
       _loading = false;
     });
-  }
-
-  Future<void> _selectLevel(CefrLevel level) async {
-    _profile.level = level;
-    await _profileService.save(_profile);
-    setState(() => _openSection = null);
   }
 
   void _toggleSection(_Section s) {
@@ -103,21 +96,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 40),
 
-            // ── Choisi ton niveau ──────────────────────────────────────
-            _AccordionCard(
-              title: 'Choisi ton niveau',
-              subtitle: _profile.level.code + ' · ' + _profile.level.labelFr,
-              icon: Icons.bar_chart_rounded,
-              isOpen: _openSection == _Section.level,
-              onTap: () => _toggleSection(_Section.level),
-              child: _LevelPicker(
-                current: _profile.level,
-                onSelect: _selectLevel,
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
             // ── Ce que je peux faire ───────────────────────────────────
             _AccordionCard(
               title: 'Ce que je peux faire',
@@ -154,7 +132,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-enum _Section { level, features, contents }
+enum _Section { features, contents }
 
 // ── Accordion card ─────────────────────────────────────────────────────────────
 
@@ -269,90 +247,6 @@ class _AccordionCard extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ── Level picker ───────────────────────────────────────────────────────────────
-
-class _LevelPicker extends StatelessWidget {
-  final CefrLevel current;
-  final void Function(CefrLevel) onSelect;
-
-  const _LevelPicker({required this.current, required this.onSelect});
-
-  static const _levels = [
-    (CefrLevel.a1, 'Je commence tout juste'),
-    (CefrLevel.a2, 'Je connais les bases'),
-    (CefrLevel.b1, 'Niveau intermédiaire'),
-    (CefrLevel.b2, 'Assez à l\'aise'),
-    (CefrLevel.c1, 'Niveau avancé'),
-    (CefrLevel.c2, 'Maîtrise'),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-      child: Column(
-        children: _levels.map(((CefrLevel, String) info) {
-          final (level, label) = info;
-          final isSelected = current == level;
-          return GestureDetector(
-            onTap: () => onSelect(level),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                color: isSelected ? AppTheme.primaryLight : AppTheme.surface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isSelected ? AppTheme.primary : AppTheme.border,
-                  width: isSelected ? 1.5 : 1,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: isSelected ? AppTheme.primary : Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppTheme.border),
-                    ),
-                    child: Center(
-                      child: Text(
-                        level.code,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13,
-                          color: isSelected ? Colors.white : AppTheme.muted,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      label,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: AppTheme.onSurface,
-                      ),
-                    ),
-                  ),
-                  if (isSelected)
-                    const Icon(Icons.check_circle_rounded,
-                        color: AppTheme.primary, size: 20),
-                ],
-              ),
-            ),
-          );
-        }).toList(),
       ),
     );
   }
