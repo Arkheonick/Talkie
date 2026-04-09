@@ -261,9 +261,9 @@ class _FeatureList extends StatelessWidget {
     ('🎧', 'Écouter, lire des dialogues vivants',
         'Transcriptions synchronisées, traductions FR, vocabulaire extrait'),
     ('✨', 'Générer mes propres situations',
-        'Décris un contexte, Gemini crée un dialogue authentique sur mesure'),
+        'Décris un contexte, Talkie crée un dialogue authentique.'),
     ('💬', 'Discuter librement',
-        'Conversation orale avec Alex, ton prof IA adapté à ton niveau'),
+        'Conversation orale avec Alex, ton prof adapté à ton niveau'),
     ('📖', 'Construire mon carnet de lexique',
         'Sauvegarde des mots, définitions, exemples et mode flashcards'),
   ];
