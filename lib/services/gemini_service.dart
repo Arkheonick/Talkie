@@ -46,7 +46,7 @@ class GeminiService {
       apiKey: apiKey,
       generationConfig: GenerationConfig(
         temperature: 0.85,
-        maxOutputTokens: 400,
+        maxOutputTokens: 1200,
       ),
     );
     // Dedicated model for lesson generation — high token budget for thinking + JSON
@@ -70,8 +70,75 @@ class GeminiService {
 
   Future<String> sendMessage(String userMessage) async {
     if (_chat == null) throw StateError('No active session');
-    final response = await _chat!.sendMessage(Content.text(userMessage));
-    return response.text ?? '';
+    final processed = _injectVocabIfNeeded(userMessage);
+    final response = await _chat!.sendMessage(Content.text(processed));
+    final text = response.text ?? '';
+    return _ensureVocabFormat(text);
+  }
+
+  // ── Vocab request detection ────────────────────────────────────────────────
+
+  static const _vocabTriggers = [
+    // English
+    'list', 'words', 'word', 'vocab', 'vocabulary', 'expression',
+    'give me', 'show me', 'tell me', 'key word', 'useful word',
+    'best word', 'which word', 'what word', 'term', 'phrase',
+    'suggest', 'recommend',
+    // French
+    'liste', 'mot', 'mots', 'vocabulaire', 'expression',
+    'donne', 'montre', 'dis moi', 'mot clé', 'mots clés',
+    'lexique', 'terme', 'termes', 'suggère', 'propose',
+    'meilleur mot', 'quel mot',
+  ];
+
+  static bool _isVocabRequest(String msg) {
+    final lower = msg.toLowerCase();
+    return _vocabTriggers.any((t) => lower.contains(t));
+  }
+
+  /// If the message looks like a vocabulary request, append an explicit
+  /// instruction so Gemini reliably uses the [VOCAB] format.
+  static String _injectVocabIfNeeded(String message) {
+    if (_isVocabRequest(message)) {
+      return '$message\n[Use the [VOCAB] list format for your answer]';
+    }
+    return message;
+  }
+
+  /// If Gemini returns a numbered list without [VOCAB] tags, wrap it.
+  /// This catches cases where the model ignores the format instruction.
+  static String _ensureVocabFormat(String text) {
+    if (text.contains('[VOCAB]')) return text; // already correct
+
+    final lines = text.split('\n');
+    final listLineIndices = <int>[];
+    for (var i = 0; i < lines.length; i++) {
+      if (RegExp(r'^\d+[\.\)]\s+\S').hasMatch(lines[i].trim())) {
+        listLineIndices.add(i);
+      }
+    }
+    if (listLineIndices.length < 2) return text; // not a list, leave as-is
+
+    final start = listLineIndices.first;
+    final end = listLineIndices.last;
+    final before = lines.sublist(0, start).join('\n').trim();
+    final after = lines.sublist(end + 1).join('\n').trim();
+
+    // Normalize separators (dash, colon, em-dash → pipe)
+    final listContent = lines.sublist(start, end + 1).map((line) {
+      return line.trim()
+          .replaceAllMapped(
+            RegExp(r'^(\d+[\.\)]\s+[^|\-–—:]+)\s*[-–—:]\s*(.+)'),
+            (m) => '${m.group(1)} | ${m.group(2)}',
+          );
+    }).join('\n');
+
+    final parts = <String>[
+      if (before.isNotEmpty) before,
+      '[VOCAB]\n$listContent\n[/VOCAB]',
+      if (after.isNotEmpty) after,
+    ];
+    return parts.join('\n\n');
   }
 
   Future<List<VocabularyEntry>> extractVocabulary(
@@ -302,38 +369,40 @@ Strict requirements:
   }
 
   String _buildLessonPrompt(Lesson lesson, CefrLevel level) {
+    final vocabRef = lesson.vocabulary.map((v) => '${v.word} (${v.translation})').join(', ');
     return '''
-You are Alex, an English teacher. The student (${level.code} level, French speaker) has just listened to the lesson: "${lesson.title}".
+You are Alex, a helpful English teacher. The student (${level.code} level, French speaker) has just listened to this lesson: "${lesson.title}".
 
-SCOPE — you can handle any of these:
-- Discuss the dialogue: comprehension, context, characters
-- Answer questions about the topic or theme (vocabulary, grammar, culture, real-world usage)
-- Provide lists on request: expressions, collocations, synonyms, tips — related to the lesson theme
-- Explain a grammar point if the student asks
-- Correct errors and reformulate
+Lesson vocabulary for reference: $vocabRef.
 
-Lesson vocabulary for reference: ${lesson.vocabulary.map((v) => v.word).join(', ')}.
+YOUR PRIMARY RULE: serve what the student actually asks. Read their intent carefully before responding.
 
-TONE: Professional, direct, warm. Skip filler praise ("Great!", "Wonderful!", "Excellent!"). If the student does well, move forward without over-commenting. Be engaged, not effusive.
+INTENT GUIDE — match your response to what they ask:
+- They ask a question → answer it directly and completely, then optionally add one relevant tip
+- They ask for a word list, vocabulary, expressions, or "best words for X" → give a numbered list using the VOCAB FORMAT below, always
+- They ask for a translation → translate and give a brief usage note
+- They ask to explain grammar → explain clearly with 1-2 short examples
+- They ask to discuss the lesson → engage naturally, ask one open question
+- They write in French → understand their intent and reply in English, briefly acknowledging what they meant
+- They make an error → correct it in one brief sentence ("You can say X here"), then continue
 
-CORRECTIONS: Clean and brief. Say "Use X, not Y" or "We say X here" then continue. Never dwell on errors.
-
-VOCAB LISTS: When the student requests a vocabulary or expression list, use this exact format — no exceptions:
+VOCAB LIST FORMAT — use this every time you produce a list, no exceptions:
 [VOCAB]
-1. English word or phrase | French translation | brief definition in English (max 8 words)
-2. English word or phrase | French translation | brief definition in English (max 8 words)
+1. English word or phrase | French translation | one short definition
+2. English word or phrase | French translation | one short definition
 [/VOCAB]
-Add one sentence before the list introducing it, and one short follow-up sentence after. Five to six items max.
+Write one intro sentence before the list. You can include up to 10 items if the question warrants it.
 
-FORMAT — output is read aloud by TTS:
-- Plain text only. No asterisks, bullets, hashtags, markdown, backticks or symbols of any kind.
-- If the student writes in French, answer in English but briefly acknowledge what they asked.
+TONE: Direct, warm, never over-praising. Skip filler like "Great!", "Wonderful!", "Excellent!".
 
-LENGTH: 60 to 80 words for conversational turns. Up to 150 words for requested lists or explanations.
-One question or prompt per response — never stack multiple questions.
-Adapt vocabulary and complexity to ${level.code} level.
+FORMAT RULES — output is read by text-to-speech:
+- Outside [VOCAB] blocks: plain text only. No asterisks, bullets, hashtags, markdown, backticks.
+- Inside [VOCAB] blocks: exact format above, nothing else.
 
-Open with a brief welcome and one focused question about the lesson.
+LENGTH: as long as the answer requires. Short question → concise reply. List request → complete list. No arbitrary word limits.
+Adapt complexity to ${level.code} level.
+
+Start with a short, friendly welcome and ask one open question about the lesson.
 ''';
   }
 

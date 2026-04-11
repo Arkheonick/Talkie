@@ -30,7 +30,8 @@ class _ChatTabState extends State<ChatTab> {
 
   final List<_Message> _messages = [];
   final Set<String> _savedWords = {}; // tracks words saved this session
-  bool _isProcessing = false;
+  bool _isGenerating = false;  // waiting for Gemini response
+  bool _isSpeaking = false;    // TTS is playing
   bool _isRecording = false;
   bool _isTranscribing = false;
 
@@ -53,15 +54,16 @@ class _ChatTabState extends State<ChatTab> {
     if (mounted) setState(() => _savedWords.addAll(saved));
 
     _gemini.startLessonChat(widget.lesson, widget.profile.level);
-    setState(() => _isProcessing = true);
+    setState(() => _isGenerating = true);
     try {
       final greeting = await _gemini.sendMessage(
         'Hello, I just finished listening to the lesson.',
       );
       _addMessage('assistant', greeting);
+      if (mounted) setState(() { _isGenerating = false; _isSpeaking = true; });
       await _tts.speak(_ttsText(greeting));
     } finally {
-      if (mounted) setState(() => _isProcessing = false);
+      if (mounted) setState(() { _isGenerating = false; _isSpeaking = false; });
     }
   }
 
@@ -79,15 +81,17 @@ class _ChatTabState extends State<ChatTab> {
   }
 
   Future<void> _send(String text) async {
-    if (text.trim().isEmpty || _isProcessing) return;
+    if (text.trim().isEmpty || _isGenerating) return;
     _textController.clear();
     _focusNode.unfocus();
     await _tts.stop();
+    if (mounted) setState(() => _isSpeaking = false);
     _addMessage('user', text.trim());
-    setState(() => _isProcessing = true);
+    setState(() => _isGenerating = true);
     try {
       final response = await _gemini.sendMessage(text.trim());
       _addMessage('assistant', response);
+      if (mounted) setState(() { _isGenerating = false; _isSpeaking = true; });
       await _tts.speak(_ttsText(response));
     } catch (e) {
       if (mounted) {
@@ -96,17 +100,14 @@ class _ChatTabState extends State<ChatTab> {
         );
       }
     } finally {
-      if (mounted) setState(() => _isProcessing = false);
+      if (mounted) setState(() { _isGenerating = false; _isSpeaking = false; });
     }
   }
 
   Future<void> _toggleRecording() async {
-    if (_isProcessing || _isTranscribing) return;
+    if (_isGenerating || _isTranscribing) return;
     if (_isRecording) {
-      setState(() {
-        _isRecording = false;
-        _isTranscribing = true;
-      });
+      setState(() { _isRecording = false; _isTranscribing = true; });
       final bytes = await _recorder.stopRecording();
       if (bytes != null && bytes.isNotEmpty) {
         final text = await _gemini.transcribeAudio(bytes);
@@ -114,6 +115,11 @@ class _ChatTabState extends State<ChatTab> {
       }
       if (mounted) setState(() => _isTranscribing = false);
       return;
+    }
+    // Interrupt TTS if the professor is speaking
+    if (_isSpeaking) {
+      await _tts.stop();
+      if (mounted) setState(() => _isSpeaking = false);
     }
     final status = await Permission.microphone.request();
     if (!status.isGranted) {
@@ -124,7 +130,6 @@ class _ChatTabState extends State<ChatTab> {
       }
       return;
     }
-    await _tts.stop();
     await _recorder.startRecording();
     setState(() => _isRecording = true);
   }
@@ -195,7 +200,7 @@ class _ChatTabState extends State<ChatTab> {
           child: ListView.builder(
             controller: _scrollController,
             padding: const EdgeInsets.all(16),
-            itemCount: _messages.length + (_isProcessing ? 1 : 0),
+            itemCount: _messages.length + (_isGenerating ? 1 : 0),
             itemBuilder: (_, i) {
               if (i == _messages.length) return const _TypingIndicator();
               final msg = _messages[i];
@@ -218,7 +223,7 @@ class _ChatTabState extends State<ChatTab> {
   }
 
   Widget _buildInput() {
-    final disabled = _isProcessing || _isTranscribing;
+    final disabled = _isGenerating || _isTranscribing;
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 24),
       decoration: const BoxDecoration(
@@ -237,9 +242,11 @@ class _ChatTabState extends State<ChatTab> {
                 shape: BoxShape.circle,
                 color: _isRecording
                     ? const Color(0xFFEF4444)
-                    : disabled
-                        ? AppTheme.border
-                        : AppTheme.primary,
+                    : _isSpeaking
+                        ? const Color(0xFFF59E0B) // amber: tap to interrupt
+                        : disabled
+                            ? AppTheme.border
+                            : AppTheme.primary,
               ),
               child: _isTranscribing
                   ? const Padding(
@@ -302,11 +309,10 @@ class _ChatTabState extends State<ChatTab> {
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-/// Strips [VOCAB]...[/VOCAB] markers and pipes so TTS reads naturally.
+/// Removes entire [VOCAB] blocks — TTS only reads discussion text, not word lists.
 String _ttsText(String text) => text
-    .replaceAll('[VOCAB]', '')
-    .replaceAll('[/VOCAB]', '')
-    .replaceAll(' | ', ', ')
+    .replaceAll(RegExp(r'\[VOCAB\].*?\[\/VOCAB\]', dotAll: true), '')
+    .replaceAll(RegExp(r'\n{3,}'), '\n\n')
     .trim();
 
 class _VocabItem {
@@ -324,11 +330,16 @@ class _ParsedMessage {
 }
 
 _ParsedMessage _parseMessage(String text) {
-  final match = RegExp(r'\[VOCAB\](.*?)\[\/VOCAB\]', dotAll: true).firstMatch(text);
-  if (match == null) return _ParsedMessage(preText: text, postText: '');
+  // Auto-close truncated [VOCAB] blocks (happens when token limit cuts the response)
+  String processed = text;
+  if (processed.contains('[VOCAB]') && !processed.contains('[/VOCAB]')) {
+    processed = '$processed\n[/VOCAB]';
+  }
+  final match = RegExp(r'\[VOCAB\](.*?)\[\/VOCAB\]', dotAll: true).firstMatch(processed);
+  if (match == null) return _ParsedMessage(preText: processed, postText: '');
 
-  final pre = text.substring(0, match.start).trim();
-  final post = text.substring(match.end).trim();
+  final pre = processed.substring(0, match.start).trim();
+  final post = processed.substring(match.end).trim();
   final items = <_VocabItem>[];
 
   for (final line in match.group(1)!.trim().split('\n')) {
