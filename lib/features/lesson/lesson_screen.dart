@@ -4,6 +4,7 @@ import '../../models/lesson.dart';
 import '../../models/user_profile.dart';
 import '../../services/notebook_service.dart';
 import '../../services/tts_player_service.dart';
+import '../../services/vocab_folder_service.dart';
 import '../../utils/app_audio.dart';
 import 'tabs/audio_tab.dart';
 import 'tabs/vocab_tab.dart';
@@ -30,10 +31,12 @@ class _LessonScreenState extends State<LessonScreen>
   late TabController _tabController;
   final _ttsPlayer = TtsPlayerService();
   final _notebookService = NotebookService();
+  final _folderService = VocabFolderService();
 
   @override
   void initState() {
     super.initState();
+    // Tab order: Écoute | Chat | Vocabulaire
     _tabController = TabController(length: 3, vsync: this);
     _initAsync();
   }
@@ -42,11 +45,12 @@ class _LessonScreenState extends State<LessonScreen>
     await _ttsPlayer.init();
     await _ttsPlayer.loadLesson(widget.lesson.transcript);
     await _notebookService.init();
+    await _folderService.init();
   }
 
   @override
   void dispose() {
-    AppAudio.stopAll(); // stop TTS when leaving the lesson
+    AppAudio.stopAll();
     _tabController.dispose();
     _ttsPlayer.dispose();
     super.dispose();
@@ -100,25 +104,25 @@ class _LessonScreenState extends State<LessonScreen>
           labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
           tabs: const [
             Tab(icon: Icon(Icons.headphones_rounded, size: 18), text: 'Écoute'),
+            Tab(icon: Icon(Icons.chat_bubble_rounded, size: 18), text: 'Chat'),
             Tab(icon: Icon(Icons.book_rounded, size: 18), text: 'Vocabulaire'),
-            Tab(icon: Icon(Icons.chat_bubble_rounded, size: 18), text: 'Chat IA'),
           ],
         ),
       ),
       body: TabBarView(
         controller: _tabController,
         children: [
-          AudioTab(
+          AudioTab(lesson: widget.lesson, ttsPlayer: _ttsPlayer),
+          ChatTab(
             lesson: widget.lesson,
-            ttsPlayer: _ttsPlayer,
+            profile: widget.profile,
+            notebookService: _notebookService,
+            folderService: _folderService,
           ),
           VocabTab(
             lesson: widget.lesson,
             notebookService: _notebookService,
-          ),
-          ChatTab(
-            lesson: widget.lesson,
-            profile: widget.profile,
+            folderService: _folderService,
           ),
         ],
       ),

@@ -8,6 +8,7 @@ class NotebookEntry {
   final String lessonTitle;
   final DateTime savedAt;
   bool isMastered;
+  String? folderId; // null = unsorted (lesson root)
 
   NotebookEntry({
     required this.id,
@@ -19,6 +20,7 @@ class NotebookEntry {
     required this.lessonTitle,
     required this.savedAt,
     this.isMastered = false,
+    this.folderId,
   });
 
   Map<String, dynamic> toJson() => {
@@ -31,6 +33,7 @@ class NotebookEntry {
         'lessonTitle': lessonTitle,
         'savedAt': savedAt.toIso8601String(),
         'isMastered': isMastered,
+        if (folderId != null) 'folderId': folderId,
       };
 
   factory NotebookEntry.fromJson(Map<String, dynamic> j) => NotebookEntry(
@@ -43,5 +46,6 @@ class NotebookEntry {
         lessonTitle: j['lessonTitle'] as String? ?? '',
         savedAt: DateTime.parse(j['savedAt'] as String),
         isMastered: j['isMastered'] as bool? ?? false,
+        folderId: j['folderId'] as String?,
       );
 }

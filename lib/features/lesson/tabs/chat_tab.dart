@@ -3,17 +3,27 @@ import '../../../app/theme.dart';
 import '../../../models/lesson.dart';
 import '../../../models/notebook_entry.dart';
 import '../../../models/user_profile.dart';
+import '../../../models/vocab_folder.dart';
+import '../../../services/audio_recorder_service.dart';
 import '../../../services/gemini_service.dart';
 import '../../../services/notebook_service.dart';
 import '../../../services/tts_service.dart';
-import '../../../services/audio_recorder_service.dart';
+import '../../../services/vocab_folder_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class ChatTab extends StatefulWidget {
   final Lesson lesson;
   final UserProfile profile;
+  final NotebookService notebookService;
+  final VocabFolderService folderService;
 
-  const ChatTab({super.key, required this.lesson, required this.profile});
+  const ChatTab({
+    super.key,
+    required this.lesson,
+    required this.profile,
+    required this.notebookService,
+    required this.folderService,
+  });
 
   @override
   State<ChatTab> createState() => _ChatTabState();
@@ -23,15 +33,12 @@ class _ChatTabState extends State<ChatTab> {
   final _gemini = GeminiService();
   final _tts = TtsService();
   final _recorder = AudioRecorderService();
-  final _notebook = NotebookService();
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
   final _focusNode = FocusNode();
 
   final List<_Message> _messages = [];
-  final Set<String> _savedWords = {}; // tracks words saved this session
-  bool _isGenerating = false;  // waiting for Gemini response
-  bool _isSpeaking = false;    // TTS is playing
+  bool _isProcessing = false;
   bool _isRecording = false;
   bool _isTranscribing = false;
 
@@ -44,26 +51,16 @@ class _ChatTabState extends State<ChatTab> {
   Future<void> _init() async {
     _gemini.init();
     await _tts.init();
-    await _notebook.init();
-    // Pre-load already-saved words for this lesson
-    final saved = _notebook
-        .loadAll()
-        .where((e) => e.lessonId == widget.lesson.id)
-        .map((e) => e.word.toLowerCase())
-        .toSet();
-    if (mounted) setState(() => _savedWords.addAll(saved));
-
     _gemini.startLessonChat(widget.lesson, widget.profile.level);
-    setState(() => _isGenerating = true);
+    setState(() => _isProcessing = true);
     try {
       final greeting = await _gemini.sendMessage(
         'Hello, I just finished listening to the lesson.',
       );
       _addMessage('assistant', greeting);
-      if (mounted) setState(() { _isGenerating = false; _isSpeaking = true; });
-      await _tts.speak(_ttsText(greeting));
+      await _tts.speak(greeting);
     } finally {
-      if (mounted) setState(() { _isGenerating = false; _isSpeaking = false; });
+      if (mounted) setState(() => _isProcessing = false);
     }
   }
 
@@ -81,18 +78,16 @@ class _ChatTabState extends State<ChatTab> {
   }
 
   Future<void> _send(String text) async {
-    if (text.trim().isEmpty || _isGenerating) return;
+    if (text.trim().isEmpty || _isProcessing) return;
     _textController.clear();
     _focusNode.unfocus();
     await _tts.stop();
-    if (mounted) setState(() => _isSpeaking = false);
     _addMessage('user', text.trim());
-    setState(() => _isGenerating = true);
+    setState(() => _isProcessing = true);
     try {
       final response = await _gemini.sendMessage(text.trim());
       _addMessage('assistant', response);
-      if (mounted) setState(() { _isGenerating = false; _isSpeaking = true; });
-      await _tts.speak(_ttsText(response));
+      await _tts.speak(response);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -100,14 +95,17 @@ class _ChatTabState extends State<ChatTab> {
         );
       }
     } finally {
-      if (mounted) setState(() { _isGenerating = false; _isSpeaking = false; });
+      if (mounted) setState(() => _isProcessing = false);
     }
   }
 
   Future<void> _toggleRecording() async {
-    if (_isGenerating || _isTranscribing) return;
+    if (_isProcessing || _isTranscribing) return;
     if (_isRecording) {
-      setState(() { _isRecording = false; _isTranscribing = true; });
+      setState(() {
+        _isRecording = false;
+        _isTranscribing = true;
+      });
       final bytes = await _recorder.stopRecording();
       if (bytes != null && bytes.isNotEmpty) {
         final text = await _gemini.transcribeAudio(bytes);
@@ -115,11 +113,6 @@ class _ChatTabState extends State<ChatTab> {
       }
       if (mounted) setState(() => _isTranscribing = false);
       return;
-    }
-    // Interrupt TTS if the professor is speaking
-    if (_isSpeaking) {
-      await _tts.stop();
-      if (mounted) setState(() => _isSpeaking = false);
     }
     final status = await Permission.microphone.request();
     if (!status.isGranted) {
@@ -130,31 +123,26 @@ class _ChatTabState extends State<ChatTab> {
       }
       return;
     }
+    await _tts.stop();
     await _recorder.startRecording();
     setState(() => _isRecording = true);
   }
 
-  Future<void> _saveWord(_VocabItem item) async {
-    final already = _savedWords.contains(item.english.toLowerCase());
-    if (already) return;
-    final entry = NotebookEntry(
-      id: 'chat_${DateTime.now().millisecondsSinceEpoch}',
-      word: item.english,
-      definition: item.definition,
-      exampleSentence: '',
-      translation: item.french,
-      lessonId: widget.lesson.id,
-      lessonTitle: widget.lesson.title,
-      savedAt: DateTime.now(),
-    );
-    await _notebook.save(entry);
-    if (!mounted) return;
-    setState(() => _savedWords.add(item.english.toLowerCase()));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('"${item.english}" ajouté au Lexique'),
-        backgroundColor: AppTheme.accent,
-        duration: const Duration(seconds: 2),
+  // ── Save word from chat ────────────────────────────────────────────────────
+
+  Future<void> _saveWordFromMessage(String messageText) async {
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _SaveWordSheet(
+        lessonId: widget.lesson.id,
+        lessonTitle: widget.lesson.title,
+        notebookService: widget.notebookService,
+        folderService: widget.folderService,
       ),
     );
   }
@@ -174,7 +162,6 @@ class _ChatTabState extends State<ChatTab> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Context banner
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           color: AppTheme.primaryLight,
@@ -184,7 +171,7 @@ class _ChatTabState extends State<ChatTab> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '${widget.lesson.title} · vocabulaire, grammaire, questions libres',
+                  'Alex discute de : ${widget.lesson.title}',
                   style: const TextStyle(
                     fontSize: 12,
                     color: AppTheme.primary,
@@ -195,35 +182,31 @@ class _ChatTabState extends State<ChatTab> {
             ],
           ),
         ),
-        // Messages
         Expanded(
           child: ListView.builder(
             controller: _scrollController,
             padding: const EdgeInsets.all(16),
-            itemCount: _messages.length + (_isGenerating ? 1 : 0),
+            itemCount: _messages.length + (_isProcessing ? 1 : 0),
             itemBuilder: (_, i) {
               if (i == _messages.length) return const _TypingIndicator();
               final msg = _messages[i];
-              if (msg.role == 'user') {
-                return _Bubble(isUser: true, text: msg.text);
-              }
-              final parsed = _parseMessage(msg.text);
-              return _AssistantMessage(
-                parsed: parsed,
-                savedWords: _savedWords,
-                onSave: _saveWord,
+              return _Bubble(
+                role: msg.role,
+                text: msg.text,
+                onSaveWord: msg.role == 'assistant'
+                    ? () => _saveWordFromMessage(msg.text)
+                    : null,
               );
             },
           ),
         ),
-        // Input bar
         _buildInput(),
       ],
     );
   }
 
   Widget _buildInput() {
-    final disabled = _isGenerating || _isTranscribing;
+    final disabled = _isProcessing || _isTranscribing;
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 24),
       decoration: const BoxDecoration(
@@ -242,11 +225,9 @@ class _ChatTabState extends State<ChatTab> {
                 shape: BoxShape.circle,
                 color: _isRecording
                     ? const Color(0xFFEF4444)
-                    : _isSpeaking
-                        ? const Color(0xFFF59E0B) // amber: tap to interrupt
-                        : disabled
-                            ? AppTheme.border
-                            : AppTheme.primary,
+                    : disabled
+                        ? AppTheme.border
+                        : AppTheme.primary,
               ),
               child: _isTranscribing
                   ? const Padding(
@@ -274,7 +255,7 @@ class _ChatTabState extends State<ChatTab> {
                 focusNode: _focusNode,
                 enabled: !disabled && !_isRecording,
                 decoration: const InputDecoration(
-                  hintText: 'Question, liste de vocab, grammaire...',
+                  hintText: 'Pose une question...',
                   hintStyle: TextStyle(color: AppTheme.muted, fontSize: 14),
                   border: InputBorder.none,
                   contentPadding:
@@ -298,7 +279,8 @@ class _ChatTabState extends State<ChatTab> {
                 shape: BoxShape.circle,
                 color: disabled ? AppTheme.border : AppTheme.accent,
               ),
-              child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+              child: const Icon(Icons.send_rounded,
+                  color: Colors.white, size: 20),
             ),
           ),
         ],
@@ -307,54 +289,7 @@ class _ChatTabState extends State<ChatTab> {
   }
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
-
-/// Removes entire [VOCAB] blocks — TTS only reads discussion text, not word lists.
-String _ttsText(String text) => text
-    .replaceAll(RegExp(r'\[VOCAB\].*?\[\/VOCAB\]', dotAll: true), '')
-    .replaceAll(RegExp(r'\n{3,}'), '\n\n')
-    .trim();
-
-class _VocabItem {
-  final String english;
-  final String french;
-  final String definition;
-  _VocabItem({required this.english, required this.french, required this.definition});
-}
-
-class _ParsedMessage {
-  final String preText;
-  final List<_VocabItem>? items;
-  final String postText;
-  _ParsedMessage({required this.preText, this.items, required this.postText});
-}
-
-_ParsedMessage _parseMessage(String text) {
-  // Auto-close truncated [VOCAB] blocks (happens when token limit cuts the response)
-  String processed = text;
-  if (processed.contains('[VOCAB]') && !processed.contains('[/VOCAB]')) {
-    processed = '$processed\n[/VOCAB]';
-  }
-  final match = RegExp(r'\[VOCAB\](.*?)\[\/VOCAB\]', dotAll: true).firstMatch(processed);
-  if (match == null) return _ParsedMessage(preText: processed, postText: '');
-
-  final pre = processed.substring(0, match.start).trim();
-  final post = processed.substring(match.end).trim();
-  final items = <_VocabItem>[];
-
-  for (final line in match.group(1)!.trim().split('\n')) {
-    final m = RegExp(r'^\d+\.\s+(.+?)\s*\|\s*(.+?)(?:\s*\|\s*(.+))?$')
-        .firstMatch(line.trim());
-    if (m != null) {
-      items.add(_VocabItem(
-        english: m.group(1)!.trim(),
-        french: m.group(2)!.trim(),
-        definition: m.group(3)?.trim() ?? '',
-      ));
-    }
-  }
-  return _ParsedMessage(preText: pre, items: items.isEmpty ? null : items, postText: post);
-}
+// ── Message model ──────────────────────────────────────────────────────────────
 
 class _Message {
   final String role;
@@ -362,228 +297,18 @@ class _Message {
   _Message({required this.role, required this.text});
 }
 
-// ── Widgets ────────────────────────────────────────────────────────────────────
-
-class _AssistantMessage extends StatelessWidget {
-  final _ParsedMessage parsed;
-  final Set<String> savedWords;
-  final Future<void> Function(_VocabItem) onSave;
-
-  const _AssistantMessage({
-    required this.parsed,
-    required this.savedWords,
-    required this.onSave,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (parsed.items == null) {
-      return _Bubble(isUser: false, text: parsed.preText);
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (parsed.preText.isNotEmpty) _Bubble(isUser: false, text: parsed.preText),
-        _VocabListCard(
-          items: parsed.items!,
-          savedWords: savedWords,
-          onSave: onSave,
-        ),
-        if (parsed.postText.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: _Bubble(isUser: false, text: parsed.postText),
-          ),
-        const SizedBox(height: 4),
-      ],
-    );
-  }
-}
-
-class _VocabListCard extends StatelessWidget {
-  final List<_VocabItem> items;
-  final Set<String> savedWords;
-  final Future<void> Function(_VocabItem) onSave;
-
-  const _VocabListCard({
-    required this.items,
-    required this.savedWords,
-    required this.onSave,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.border),
-      ),
-      child: Column(
-        children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: AppTheme.primaryLight,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.format_list_bulleted_rounded,
-                    size: 14, color: AppTheme.primary),
-                const SizedBox(width: 6),
-                Text(
-                  '${items.length} expressions · appuie sur 📌 pour mémoriser',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Items
-          ...items.asMap().entries.map((e) {
-            final idx = e.key;
-            final item = e.value;
-            final isSaved = savedWords.contains(item.english.toLowerCase());
-            final isLast = idx == items.length - 1;
-            return _VocabRow(
-              number: idx + 1,
-              item: item,
-              isSaved: isSaved,
-              isLast: isLast,
-              onSave: () => onSave(item),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-}
-
-class _VocabRow extends StatelessWidget {
-  final int number;
-  final _VocabItem item;
-  final bool isSaved;
-  final bool isLast;
-  final VoidCallback onSave;
-
-  const _VocabRow({
-    required this.number,
-    required this.item,
-    required this.isSaved,
-    required this.isLast,
-    required this.onSave,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Number badge
-              Container(
-                width: 22,
-                height: 22,
-                margin: const EdgeInsets.only(top: 1),
-                decoration: BoxDecoration(
-                  color: AppTheme.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Center(
-                  child: Text(
-                    '$number',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.primary,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              // Word + translation + definition
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.english,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      item.french,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: AppTheme.primary,
-                      ),
-                    ),
-                    if (item.definition.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        item.definition,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: AppTheme.muted,
-                          height: 1.4,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              // Save button
-              GestureDetector(
-                onTap: isSaved ? null : onSave,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: isSaved
-                        ? AppTheme.accent.withValues(alpha: 0.12)
-                        : AppTheme.surface,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: isSaved ? AppTheme.accent : AppTheme.border,
-                    ),
-                  ),
-                  child: Icon(
-                    isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                    size: 18,
-                    color: isSaved ? AppTheme.accent : AppTheme.muted,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        if (!isLast) const Divider(height: 1, color: AppTheme.border, indent: 46),
-      ],
-    );
-  }
-}
+// ── Bubble with optional save button ─────────────────────────────────────────
 
 class _Bubble extends StatelessWidget {
-  final bool isUser;
+  final String role;
   final String text;
-  const _Bubble({required this.isUser, required this.text});
+  final VoidCallback? onSaveWord;
+
+  const _Bubble({required this.role, required this.text, this.onSaveWord});
 
   @override
   Widget build(BuildContext context) {
+    final isUser = role == 'user';
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -591,29 +316,276 @@ class _Bubble extends StatelessWidget {
           maxWidth: MediaQuery.of(context).size.width * 0.78,
         ),
         margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: isUser ? AppTheme.primary : Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(18),
-            topRight: const Radius.circular(18),
-            bottomLeft: Radius.circular(isUser ? 18 : 4),
-            bottomRight: Radius.circular(isUser ? 4 : 18),
+        child: Column(
+          crossAxisAlignment:
+              isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: isUser ? AppTheme.primary : Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(18),
+                  topRight: const Radius.circular(18),
+                  bottomLeft: Radius.circular(isUser ? 18 : 4),
+                  bottomRight: Radius.circular(isUser ? 4 : 18),
+                ),
+                border: isUser ? null : Border.all(color: AppTheme.border),
+              ),
+              child: Text(
+                text,
+                style: TextStyle(
+                  fontSize: 14,
+                  height: 1.5,
+                  color: isUser ? Colors.white : AppTheme.onSurface,
+                ),
+              ),
+            ),
+            // Save word button on AI messages
+            if (!isUser && onSaveWord != null)
+              GestureDetector(
+                onTap: onSaveWord,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 4, left: 4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(Icons.bookmark_add_outlined,
+                          size: 14, color: AppTheme.muted),
+                      SizedBox(width: 4),
+                      Text(
+                        'Sauvegarder un mot',
+                        style: TextStyle(fontSize: 11, color: AppTheme.muted),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Save word bottom sheet ─────────────────────────────────────────────────────
+
+class _SaveWordSheet extends StatefulWidget {
+  final String lessonId;
+  final String lessonTitle;
+  final NotebookService notebookService;
+  final VocabFolderService folderService;
+
+  const _SaveWordSheet({
+    required this.lessonId,
+    required this.lessonTitle,
+    required this.notebookService,
+    required this.folderService,
+  });
+
+  @override
+  State<_SaveWordSheet> createState() => _SaveWordSheetState();
+}
+
+class _SaveWordSheetState extends State<_SaveWordSheet> {
+  final _wordCtrl = TextEditingController();
+  final _transCtrl = TextEditingController();
+  final _defCtrl = TextEditingController();
+  String? _selectedFolderId;
+  late List<VocabFolder> _folders;
+
+  @override
+  void initState() {
+    super.initState();
+    _folders = widget.folderService.getFoldersForLesson(widget.lessonId);
+  }
+
+  Future<void> _createFolder() async {
+    final ctrl = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Nouveau dossier'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'Nom du dossier'),
+          onSubmitted: (v) => Navigator.pop(context, v),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Annuler')),
+          ElevatedButton(
+              onPressed: () => Navigator.pop(context, ctrl.text),
+              child: const Text('Créer')),
+        ],
+      ),
+    );
+    if (name == null || name.trim().isEmpty) return;
+    final folder = await widget.folderService
+        .createFolder(widget.lessonId, name.trim());
+    setState(() {
+      _folders.add(folder);
+      _selectedFolderId = folder.id;
+    });
+  }
+
+  Future<void> _save() async {
+    final word = _wordCtrl.text.trim();
+    if (word.isEmpty) return;
+    final entry = NotebookEntry(
+      id: '${widget.lessonId}_chat_${word.replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}',
+      word: word,
+      definition: _defCtrl.text.trim(),
+      exampleSentence: '',
+      translation: _transCtrl.text.trim(),
+      lessonId: widget.lessonId,
+      lessonTitle: widget.lessonTitle,
+      savedAt: DateTime.now(),
+      folderId: _selectedFolderId,
+    );
+    await widget.notebookService.save(entry);
+    if (mounted) Navigator.pop(context);
+  }
+
+  @override
+  void dispose() {
+    _wordCtrl.dispose();
+    _transCtrl.dispose();
+    _defCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.of(context).viewInsets.bottom +
+        MediaQuery.of(context).padding.bottom;
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Sauvegarder un mot',
+              style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.onSurface)),
+          const SizedBox(height: 16),
+          _field(_wordCtrl, 'Mot ou expression *', autofocus: true),
+          const SizedBox(height: 10),
+          _field(_transCtrl, 'Traduction (FR)'),
+          const SizedBox(height: 10),
+          _field(_defCtrl, 'Définition (optionnel)', maxLines: 2),
+          const SizedBox(height: 16),
+          const Text('Dossier',
+              style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.onSurface)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _folderChip(null, 'Sans dossier'),
+              ..._folders.map((f) => _folderChip(f.id, f.name)),
+              GestureDetector(
+                onTap: _createFolder,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                        color: AppTheme.primary, style: BorderStyle.solid),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.add, size: 14, color: AppTheme.primary),
+                      SizedBox(width: 4),
+                      Text('Nouveau dossier',
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: AppTheme.primary,
+                              fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-          border: isUser ? null : Border.all(color: AppTheme.border),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _wordCtrl.text.isNotEmpty ? _save : null,
+              child: const Text('Ajouter au Lexique'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _field(TextEditingController ctrl, String hint,
+      {bool autofocus = false, int maxLines = 1}) {
+    return ListenableBuilder(
+      listenable: ctrl,
+      builder: (_, __) => TextField(
+        controller: ctrl,
+        autofocus: autofocus,
+        maxLines: maxLines,
+        onChanged: (_) => setState(() {}),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: const TextStyle(color: AppTheme.muted, fontSize: 13),
+          filled: true,
+          fillColor: AppTheme.surface,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: AppTheme.border),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: AppTheme.border),
+          ),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        ),
+      ),
+    );
+  }
+
+  Widget _folderChip(String? folderId, String label) {
+    final selected = _selectedFolderId == folderId;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedFolderId = folderId),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? AppTheme.primary : AppTheme.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+              color: selected ? AppTheme.primary : AppTheme.border),
         ),
         child: Text(
-          text,
+          label,
           style: TextStyle(
-            fontSize: 14,
-            height: 1.5,
-            color: isUser ? Colors.white : AppTheme.onSurface,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: selected ? Colors.white : AppTheme.muted,
           ),
         ),
       ),
     );
   }
 }
+
+// ── Typing indicator ───────────────────────────────────────────────────────────
 
 class _TypingIndicator extends StatefulWidget {
   const _TypingIndicator();

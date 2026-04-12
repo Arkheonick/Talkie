@@ -4,7 +4,7 @@ import '../../utils/app_audio.dart';
 import '../home/home_screen.dart';
 import '../explore/explore_screen.dart';
 import '../prof/prof_screen.dart';
-import '../notebook/notebook_screen.dart';
+import '../notebook/lexique_screen.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -74,7 +74,7 @@ class _MainShellState extends State<MainShell> {
       case 0: return const HomeScreen();
       case 1: return const ExploreScreen();
       case 2: return const ProfScreen();
-      case 3: return const NotebookScreen();
+      case 3: return const LexiqueScreen();
       default: return const SizedBox.expand();
     }
   }

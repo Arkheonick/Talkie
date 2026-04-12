@@ -2,16 +2,20 @@ import 'package:flutter/material.dart';
 import '../../../app/theme.dart';
 import '../../../models/lesson.dart';
 import '../../../models/notebook_entry.dart';
+import '../../../models/vocab_folder.dart';
 import '../../../services/notebook_service.dart';
+import '../../../services/vocab_folder_service.dart';
 
 class VocabTab extends StatefulWidget {
   final Lesson lesson;
   final NotebookService notebookService;
+  final VocabFolderService folderService;
 
   const VocabTab({
     super.key,
     required this.lesson,
     required this.notebookService,
+    required this.folderService,
   });
 
   @override
@@ -19,15 +23,17 @@ class VocabTab extends StatefulWidget {
 }
 
 class _VocabTabState extends State<VocabTab> {
+  List<VocabFolder> _folders = [];
   final Set<String> _saved = {};
 
   @override
   void initState() {
     super.initState();
-    _loadSaved();
+    _reload();
   }
 
-  void _loadSaved() {
+  void _reload() {
+    _folders = widget.folderService.getFoldersForLesson(widget.lesson.id);
     for (final v in widget.lesson.vocabulary) {
       if (widget.notebookService.contains(v.word, widget.lesson.id)) {
         _saved.add(v.word);
@@ -35,17 +41,20 @@ class _VocabTabState extends State<VocabTab> {
     }
   }
 
-  Future<void> _toggleSave(LessonVocabulary v) async {
+  // ── Save word with folder picker ───────────────────────────────────────────
+
+  Future<void> _saveWord(LessonVocabulary v) async {
     if (_saved.contains(v.word)) {
-      // Already saved — don't remove from notebook here (use notebook screen)
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Déjà dans ton carnet.'),
-          duration: Duration(seconds: 1),
-        ),
+            content: Text('Déjà dans le Lexique.'),
+            duration: Duration(seconds: 1)),
       );
       return;
     }
+
+    final folderId = await _showFolderPicker();
+    if (!mounted) return;
 
     final entry = NotebookEntry(
       id: '${widget.lesson.id}_${v.word.replaceAll(' ', '_')}',
@@ -56,17 +65,45 @@ class _VocabTabState extends State<VocabTab> {
       lessonId: widget.lesson.id,
       lessonTitle: widget.lesson.title,
       savedAt: DateTime.now(),
+      folderId: folderId,
     );
 
     await widget.notebookService.save(entry);
     setState(() => _saved.add(v.word));
 
     if (!mounted) return;
+    final folderName = folderId == null
+        ? 'Lexique'
+        : _folders.firstWhere((f) => f.id == folderId).name;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('"${v.word}" ajouté au carnet !'),
+        content: Text('"${v.word}" → $folderName'),
         backgroundColor: AppTheme.accent,
         duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  /// Shows a bottom sheet to pick a folder (or create one).
+  /// Returns the chosen folderId, or null (= no folder / root).
+  Future<String?> _showFolderPicker() async {
+    return showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _FolderPickerSheet(
+        lessonId: widget.lesson.id,
+        folders: _folders,
+        folderService: widget.folderService,
+        onFoldersChanged: () {
+          setState(() {
+            _folders =
+                widget.folderService.getFoldersForLesson(widget.lesson.id);
+          });
+        },
       ),
     );
   }
@@ -112,7 +149,6 @@ class _VocabTabState extends State<VocabTab> {
                             color: AppTheme.onSurface,
                           ),
                         ),
-                        const SizedBox(height: 2),
                         Text(
                           v.translation,
                           style: const TextStyle(
@@ -125,7 +161,7 @@ class _VocabTabState extends State<VocabTab> {
                     ),
                   ),
                   GestureDetector(
-                    onTap: () => _toggleSave(v),
+                    onTap: () => _saveWord(v),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       width: 36,
@@ -136,7 +172,8 @@ class _VocabTabState extends State<VocabTab> {
                             : AppTheme.surface,
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: isSaved ? AppTheme.accent : AppTheme.border,
+                          color:
+                              isSaved ? AppTheme.accent : AppTheme.border,
                         ),
                       ),
                       child: Icon(
@@ -171,10 +208,7 @@ class _VocabTabState extends State<VocabTab> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      '💬 ',
-                      style: TextStyle(fontSize: 13),
-                    ),
+                    const Text('💬 ', style: TextStyle(fontSize: 13)),
                     Expanded(
                       child: Text(
                         v.exampleSentence,
@@ -195,4 +229,148 @@ class _VocabTabState extends State<VocabTab> {
       },
     );
   }
+}
+
+// ── Folder picker bottom sheet ─────────────────────────────────────────────────
+
+class _FolderPickerSheet extends StatefulWidget {
+  final String lessonId;
+  final List<VocabFolder> folders;
+  final VocabFolderService folderService;
+  final VoidCallback onFoldersChanged;
+
+  const _FolderPickerSheet({
+    required this.lessonId,
+    required this.folders,
+    required this.folderService,
+    required this.onFoldersChanged,
+  });
+
+  @override
+  State<_FolderPickerSheet> createState() => _FolderPickerSheetState();
+}
+
+class _FolderPickerSheetState extends State<_FolderPickerSheet> {
+  late List<VocabFolder> _folders;
+
+  @override
+  void initState() {
+    super.initState();
+    _folders = List.from(widget.folders);
+  }
+
+  Future<void> _createFolder() async {
+    final name = await _showNameDialog(context, 'Nouveau dossier', '');
+    if (name == null || name.trim().isEmpty) return;
+    final folder =
+        await widget.folderService.createFolder(widget.lessonId, name.trim());
+    setState(() => _folders.add(folder));
+    widget.onFoldersChanged();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottomPadding),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Sauvegarder dans...',
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 16),
+          // No folder (root)
+          _FolderOption(
+            icon: Icons.bookmark_rounded,
+            label: 'Lexique (sans dossier)',
+            onTap: () => Navigator.pop(context, null),
+          ),
+          if (_folders.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            const Divider(height: 1, color: AppTheme.border),
+            const SizedBox(height: 8),
+            ..._folders.map((f) => _FolderOption(
+                  icon: Icons.folder_rounded,
+                  label: f.name,
+                  onTap: () => Navigator.pop(context, f.id),
+                )),
+          ],
+          const SizedBox(height: 8),
+          const Divider(height: 1, color: AppTheme.border),
+          const SizedBox(height: 8),
+          _FolderOption(
+            icon: Icons.create_new_folder_rounded,
+            label: 'Créer un nouveau dossier',
+            color: AppTheme.primary,
+            onTap: _createFolder,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FolderOption extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color? color;
+  final VoidCallback onTap;
+
+  const _FolderOption({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final c = color ?? AppTheme.onSurface;
+    return GestureDetector(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: c),
+            const SizedBox(width: 12),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 15, fontWeight: FontWeight.w500, color: c)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+Future<String?> _showNameDialog(
+    BuildContext context, String title, String initial) async {
+  final ctrl = TextEditingController(text: initial);
+  return showDialog<String>(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: Text(title),
+      content: TextField(
+        controller: ctrl,
+        autofocus: true,
+        decoration: const InputDecoration(hintText: 'Nom du dossier'),
+        onSubmitted: (v) => Navigator.pop(context, v),
+      ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+        ElevatedButton(
+            onPressed: () => Navigator.pop(context, ctrl.text),
+            child: const Text('Créer')),
+      ],
+    ),
+  );
 }
