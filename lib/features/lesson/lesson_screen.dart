@@ -112,7 +112,12 @@ class _LessonScreenState extends State<LessonScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          AudioTab(lesson: widget.lesson, ttsPlayer: _ttsPlayer),
+          AudioTab(
+            lesson: widget.lesson,
+            ttsPlayer: _ttsPlayer,
+            notebookService: _notebookService,
+            folderService: _folderService,
+          ),
           ChatTab(
             lesson: widget.lesson,
             profile: widget.profile,

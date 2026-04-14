@@ -45,6 +45,13 @@ class _ChatTabState extends State<ChatTab> {
   @override
   void initState() {
     super.initState();
+    // Stop TTS when user taps the text field or starts typing
+    _focusNode.addListener(() {
+      if (_focusNode.hasFocus) _tts.stop();
+    });
+    _textController.addListener(() {
+      if (_textController.text.isNotEmpty) _tts.stop();
+    });
     _init();
   }
 
@@ -58,7 +65,8 @@ class _ChatTabState extends State<ChatTab> {
         'Hello, I just finished listening to the lesson.',
       );
       _addMessage('assistant', greeting);
-      await _tts.speak(greeting);
+      final ttsText = _stripVocabForTts(greeting);
+      if (ttsText.isNotEmpty) await _tts.speak(ttsText);
     } finally {
       if (mounted) setState(() => _isProcessing = false);
     }
@@ -84,10 +92,10 @@ class _ChatTabState extends State<ChatTab> {
     await _tts.stop();
     _addMessage('user', text.trim());
     setState(() => _isProcessing = true);
+    String? response;
     try {
-      final response = await _gemini.sendMessage(text.trim());
-      _addMessage('assistant', response);
-      await _tts.speak(response);
+      response = await _gemini.sendMessage(text.trim());
+      if (mounted) _addMessage('assistant', response);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -97,6 +105,19 @@ class _ChatTabState extends State<ChatTab> {
     } finally {
       if (mounted) setState(() => _isProcessing = false);
     }
+    if (response != null && mounted) {
+      // Only speak the non-list part — vocab lists are too long for TTS
+      final ttsText = _stripVocabForTts(response);
+      if (ttsText.isNotEmpty) await _tts.speak(ttsText);
+    }
+  }
+
+  /// Removes [VOCAB]...[/VOCAB] blocks before TTS — too long to read aloud.
+  static String _stripVocabForTts(String text) {
+    return text
+        .replaceAll(RegExp(r'\[VOCAB\].*?\[/VOCAB\]', dotAll: true), '')
+        .replaceAll(RegExp(r'\n{3,}'), '\n\n')
+        .trim();
   }
 
   Future<void> _toggleRecording() async {
@@ -123,14 +144,14 @@ class _ChatTabState extends State<ChatTab> {
       }
       return;
     }
-    await _tts.stop();
+    await _tts.stop(); // interrupt professor if still speaking
     await _recorder.startRecording();
     setState(() => _isRecording = true);
   }
 
-  // ── Save word from chat ────────────────────────────────────────────────────
+  // ── Save word ──────────────────────────────────────────────────────────────
 
-  Future<void> _saveWordFromMessage(String messageText) async {
+  Future<void> _saveWord({String word = '', String translation = ''}) async {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -143,6 +164,8 @@ class _ChatTabState extends State<ChatTab> {
         lessonTitle: widget.lesson.title,
         notebookService: widget.notebookService,
         folderService: widget.folderService,
+        initialWord: word,
+        initialTranslation: translation,
       ),
     );
   }
@@ -162,26 +185,6 @@ class _ChatTabState extends State<ChatTab> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          color: AppTheme.primaryLight,
-          child: Row(
-            children: [
-              const Icon(Icons.school_rounded, size: 16, color: AppTheme.primary),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Alex discute de : ${widget.lesson.title}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.primary,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
         Expanded(
           child: ListView.builder(
             controller: _scrollController,
@@ -193,9 +196,7 @@ class _ChatTabState extends State<ChatTab> {
               return _Bubble(
                 role: msg.role,
                 text: msg.text,
-                onSaveWord: msg.role == 'assistant'
-                    ? () => _saveWordFromMessage(msg.text)
-                    : null,
+                onSaveWord: msg.role == 'assistant' ? _saveWord : null,
               );
             },
           ),
@@ -297,23 +298,84 @@ class _Message {
   _Message({required this.role, required this.text});
 }
 
-// ── Bubble with optional save button ─────────────────────────────────────────
+// ── Message segment parsing ────────────────────────────────────────────────────
+
+class _TextSeg {
+  final String text;
+  _TextSeg(this.text);
+}
+
+class _VocabSeg {
+  final List<_VocabEntry> entries;
+  _VocabSeg(this.entries);
+}
+
+class _VocabEntry {
+  final int number;
+  final String word;
+  final String translation;
+  _VocabEntry(this.number, this.word, this.translation);
+}
+
+List<Object> _parseSegments(String text) {
+  final result = <Object>[];
+  final regex = RegExp(r'\[VOCAB\](.*?)\[/VOCAB\]', dotAll: true);
+  int last = 0;
+  for (final m in regex.allMatches(text)) {
+    if (m.start > last) {
+      final t = text.substring(last, m.start).trim();
+      if (t.isNotEmpty) result.add(_TextSeg(t));
+    }
+    final entries = _parseVocabEntries(m.group(1) ?? '');
+    if (entries.isNotEmpty) result.add(_VocabSeg(entries));
+    last = m.end;
+  }
+  if (last < text.length) {
+    final t = text.substring(last).trim();
+    if (t.isNotEmpty) result.add(_TextSeg(t));
+  }
+  return result.isEmpty ? [_TextSeg(text)] : result;
+}
+
+List<_VocabEntry> _parseVocabEntries(String block) {
+  final entries = <_VocabEntry>[];
+  final lineRe = RegExp(r'^(\d+)[.\)]\s+(.+)');
+  for (final line in block.trim().split('\n')) {
+    final m = lineRe.firstMatch(line.trim());
+    if (m == null) continue;
+    final num = int.tryParse(m.group(1)!) ?? (entries.length + 1);
+    final rest = m.group(2) ?? '';
+    // Support both pipe separator and dash separators
+    final parts = rest.split(RegExp(r'\s*[|—–-]\s*')).map((p) => p.trim()).toList();
+    if (parts.isEmpty || parts[0].isEmpty) continue;
+    entries.add(_VocabEntry(
+      num,
+      parts[0],
+      parts.length > 1 ? parts[1] : '',
+    ));
+  }
+  return entries;
+}
+
+// ── Bubble ─────────────────────────────────────────────────────────────────────
 
 class _Bubble extends StatelessWidget {
   final String role;
   final String text;
-  final VoidCallback? onSaveWord;
+  final void Function({String word, String translation})? onSaveWord;
 
   const _Bubble({required this.role, required this.text, this.onSaveWord});
 
   @override
   Widget build(BuildContext context) {
     final isUser = role == 'user';
+    final segments = isUser ? <Object>[_TextSeg(text)] : _parseSegments(text);
+
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.78,
+          maxWidth: MediaQuery.of(context).size.width * 0.85,
         ),
         margin: const EdgeInsets.only(bottom: 10),
         child: Column(
@@ -321,8 +383,7 @@ class _Bubble extends StatelessWidget {
               isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: isUser ? AppTheme.primary : Colors.white,
                 borderRadius: BorderRadius.only(
@@ -333,33 +394,198 @@ class _Bubble extends StatelessWidget {
                 ),
                 border: isUser ? null : Border.all(color: AppTheme.border),
               ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final seg in segments)
+                    if (seg is _TextSeg)
+                      _buildText(context, seg.text, isUser)
+                    else if (seg is _VocabSeg)
+                      _buildVocabList(context, seg.entries),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildText(BuildContext context, String text, bool isUser) {
+    if (isUser || onSaveWord == null) {
+      return Text(
+        text,
+        style: TextStyle(
+          fontSize: 14,
+          height: 1.5,
+          color: isUser ? Colors.white : AppTheme.onSurface,
+        ),
+      );
+    }
+    // Assistant text: selectable with "Sauvegarder" in context menu
+    return SelectableText(
+      text,
+      style: const TextStyle(
+        fontSize: 14,
+        height: 1.5,
+        color: AppTheme.onSurface,
+      ),
+      contextMenuBuilder: (ctx, editableTextState) {
+        final selection = editableTextState.textEditingValue.selection;
+        final selected = selection.isCollapsed
+            ? ''
+            : selection.textInside(editableTextState.textEditingValue.text);
+        return AdaptiveTextSelectionToolbar.buttonItems(
+          anchors: editableTextState.contextMenuAnchors,
+          buttonItems: [
+            ...editableTextState.contextMenuButtonItems,
+            if (selected.trim().isNotEmpty)
+              ContextMenuButtonItem(
+                label: 'Sauvegarder',
+                onPressed: () {
+                  ContextMenuController.removeAny();
+                  onSaveWord?.call(word: selected.trim(), translation: '');
+                },
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildVocabList(BuildContext context, List<_VocabEntry> entries) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 4),
+        Container(
+          decoration: BoxDecoration(
+            color: AppTheme.primaryLight,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
+          ),
+          child: Column(
+            children: [
+              // Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                child: Row(
+                  children: [
+                    const Icon(Icons.menu_book_rounded,
+                        size: 13, color: AppTheme.primary),
+                    const SizedBox(width: 6),
+                    const Text(
+                      'Vocabulaire',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.primary,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (onSaveWord != null)
+                      Text(
+                        'Appui long pour sauvegarder',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: AppTheme.primary.withValues(alpha: 0.7),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, color: Color(0xFFD0E4FF)),
+              // Entries
+              for (int i = 0; i < entries.length; i++) ...[
+                _VocabRow(
+                  entry: entries[i],
+                  isLast: i == entries.length - 1,
+                  onSave: onSaveWord == null
+                      ? null
+                      : () => onSaveWord!(
+                            word: entries[i].word,
+                            translation: entries[i].translation,
+                          ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 4),
+      ],
+    );
+  }
+}
+
+class _VocabRow extends StatelessWidget {
+  final _VocabEntry entry;
+  final bool isLast;
+  final VoidCallback? onSave;
+
+  const _VocabRow({required this.entry, required this.isLast, this.onSave});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onLongPress: onSave,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          border: isLast
+              ? null
+              : const Border(
+                  bottom: BorderSide(color: Color(0xFFD0E4FF), width: 0.5)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Number
+            SizedBox(
+              width: 22,
               child: Text(
-                text,
-                style: TextStyle(
-                  fontSize: 14,
-                  height: 1.5,
-                  color: isUser ? Colors.white : AppTheme.onSurface,
+                '${entry.number}.',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.primary,
                 ),
               ),
             ),
-            // Save word button on AI messages
-            if (!isUser && onSaveWord != null)
-              GestureDetector(
-                onTap: onSaveWord,
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 4, left: 4),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(Icons.bookmark_add_outlined,
-                          size: 14, color: AppTheme.muted),
-                      SizedBox(width: 4),
-                      Text(
-                        'Sauvegarder un mot',
-                        style: TextStyle(fontSize: 11, color: AppTheme.muted),
-                      ),
-                    ],
+            // Word + translation
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    entry.word,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.onSurface,
+                    ),
                   ),
+                  if (entry.translation.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      entry.translation,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.muted,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            // Save bookmark
+            if (onSave != null)
+              GestureDetector(
+                onTap: onSave,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 8, top: 2),
+                  child: const Icon(Icons.bookmark_add_outlined,
+                      size: 18, color: AppTheme.primary),
                 ),
               ),
           ],
@@ -376,12 +602,16 @@ class _SaveWordSheet extends StatefulWidget {
   final String lessonTitle;
   final NotebookService notebookService;
   final VocabFolderService folderService;
+  final String initialWord;
+  final String initialTranslation;
 
   const _SaveWordSheet({
     required this.lessonId,
     required this.lessonTitle,
     required this.notebookService,
     required this.folderService,
+    this.initialWord = '',
+    this.initialTranslation = '',
   });
 
   @override
@@ -389,8 +619,8 @@ class _SaveWordSheet extends StatefulWidget {
 }
 
 class _SaveWordSheetState extends State<_SaveWordSheet> {
-  final _wordCtrl = TextEditingController();
-  final _transCtrl = TextEditingController();
+  late final TextEditingController _wordCtrl;
+  late final TextEditingController _transCtrl;
   final _defCtrl = TextEditingController();
   String? _selectedFolderId;
   late List<VocabFolder> _folders;
@@ -398,6 +628,8 @@ class _SaveWordSheetState extends State<_SaveWordSheet> {
   @override
   void initState() {
     super.initState();
+    _wordCtrl = TextEditingController(text: widget.initialWord);
+    _transCtrl = TextEditingController(text: widget.initialTranslation);
     _folders = widget.folderService.getFoldersForLesson(widget.lessonId);
   }
 
@@ -424,8 +656,8 @@ class _SaveWordSheetState extends State<_SaveWordSheet> {
       ),
     );
     if (name == null || name.trim().isEmpty) return;
-    final folder = await widget.folderService
-        .createFolder(widget.lessonId, name.trim());
+    final folder =
+        await widget.folderService.createFolder(widget.lessonId, name.trim());
     setState(() {
       _folders.add(folder);
       _selectedFolderId = folder.id;
@@ -474,7 +706,7 @@ class _SaveWordSheetState extends State<_SaveWordSheet> {
                   fontWeight: FontWeight.w700,
                   color: AppTheme.onSurface)),
           const SizedBox(height: 16),
-          _field(_wordCtrl, 'Mot ou expression *', autofocus: true),
+          _field(_wordCtrl, 'Mot ou expression *', autofocus: widget.initialWord.isEmpty),
           const SizedBox(height: 10),
           _field(_transCtrl, 'Traduction (FR)'),
           const SizedBox(height: 10),
@@ -495,11 +727,9 @@ class _SaveWordSheetState extends State<_SaveWordSheet> {
               GestureDetector(
                 onTap: _createFolder,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    border: Border.all(
-                        color: AppTheme.primary, style: BorderStyle.solid),
+                    border: Border.all(color: AppTheme.primary),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Row(
@@ -519,11 +749,14 @@ class _SaveWordSheetState extends State<_SaveWordSheet> {
             ],
           ),
           const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _wordCtrl.text.isNotEmpty ? _save : null,
-              child: const Text('Ajouter au Lexique'),
+          ListenableBuilder(
+            listenable: _wordCtrl,
+            builder: (_, __) => SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _wordCtrl.text.trim().isNotEmpty ? _save : null,
+                child: const Text('Ajouter au Lexique'),
+              ),
             ),
           ),
         ],
@@ -533,29 +766,25 @@ class _SaveWordSheetState extends State<_SaveWordSheet> {
 
   Widget _field(TextEditingController ctrl, String hint,
       {bool autofocus = false, int maxLines = 1}) {
-    return ListenableBuilder(
-      listenable: ctrl,
-      builder: (_, __) => TextField(
-        controller: ctrl,
-        autofocus: autofocus,
-        maxLines: maxLines,
-        onChanged: (_) => setState(() {}),
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: const TextStyle(color: AppTheme.muted, fontSize: 13),
-          filled: true,
-          fillColor: AppTheme.surface,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: AppTheme.border),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: AppTheme.border),
-          ),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+    return TextField(
+      controller: ctrl,
+      autofocus: autofocus,
+      maxLines: maxLines,
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(color: AppTheme.muted, fontSize: 13),
+        filled: true,
+        fillColor: AppTheme.surface,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppTheme.border),
         ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppTheme.border),
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       ),
     );
   }

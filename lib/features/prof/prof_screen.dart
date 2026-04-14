@@ -43,6 +43,13 @@ class _ProfScreenState extends State<ProfScreen> {
   @override
   void initState() {
     super.initState();
+    // Stop TTS when user taps the text field or starts typing
+    _focusNode.addListener(() {
+      if (_focusNode.hasFocus) _tts.stop();
+    });
+    _textController.addListener(() {
+      if (_textController.text.isNotEmpty) _tts.stop();
+    });
     _init();
   }
 
@@ -87,10 +94,10 @@ class _ProfScreenState extends State<ProfScreen> {
     await _tts.stop();
     _addMsg('user', text.trim());
     setState(() => _isProcessing = true);
+    String? response;
     try {
-      final response = await _gemini.sendMessage(text.trim());
-      _addMsg('assistant', response);
-      await _tts.speak(response);
+      response = await _gemini.sendMessage(text.trim());
+      if (mounted) _addMsg('assistant', response);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -98,8 +105,10 @@ class _ProfScreenState extends State<ProfScreen> {
         );
       }
     } finally {
+      // Set false BEFORE speaking so the mic button is active during TTS
       if (mounted) setState(() => _isProcessing = false);
     }
+    if (response != null && mounted) await _tts.speak(response);
   }
 
   Future<void> _toggleRecording() async {

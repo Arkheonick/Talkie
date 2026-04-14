@@ -21,6 +21,10 @@ class _MainShellState extends State<MainShell> {
   // All other tabs can be pre-built during swipe for smooth animation.
   final Set<int> _visited = {0};
 
+  // True while animateToPage() is in flight. Used to prevent onPageChanged
+  // from adding transit pages (e.g. Discussion) to _visited mid-animation.
+  bool _isProgrammaticNav = false;
+
   static const _tabs = [
     _TabItem(icon: Icons.home_outlined,          activeIcon: Icons.home_rounded,          label: 'Accueil'),
     _TabItem(icon: Icons.explore_outlined,        activeIcon: Icons.explore_rounded,        label: 'Explorer'),
@@ -59,13 +63,16 @@ class _MainShellState extends State<MainShell> {
 
   void _selectTab(int i) {
     AppAudio.stopAll();
+    _isProgrammaticNav = true;
     _visited.add(i);
     setState(() => _index = i);
-    _pageController.animateToPage(
-      i,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
+    _pageController
+        .animateToPage(
+          i,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        )
+        .then((_) => _isProgrammaticNav = false);
   }
 
   Widget _buildScreen(int i) {
@@ -88,7 +95,10 @@ class _MainShellState extends State<MainShell> {
         itemCount: 4,
         onPageChanged: (i) {
           AppAudio.stopAll();
-          _visited.add(i);
+          // During programmatic navigation (tab bar tap), don't add transit
+          // pages to _visited — the destination was already added by _selectTab.
+          // This prevents Discussion from being built mid-animation and auto-speaking.
+          if (!_isProgrammaticNav) _visited.add(i);
           setState(() => _index = i);
         },
         itemBuilder: (_, i) => _KeepAlivePage(child: _buildScreen(i)),

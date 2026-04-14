@@ -604,18 +604,6 @@ class _WordTileState extends State<_WordTile> {
                     ],
                   ),
                 ),
-                // Mastered
-                GestureDetector(
-                  onTap: widget.onToggleMastered,
-                  child: Icon(
-                    e.isMastered
-                        ? Icons.check_circle_rounded
-                        : Icons.radio_button_unchecked_rounded,
-                    size: 18,
-                    color: e.isMastered ? AppTheme.accent : AppTheme.border,
-                  ),
-                ),
-                const SizedBox(width: 6),
                 // Move
                 GestureDetector(
                   onTap: widget.onMove,
@@ -629,8 +617,11 @@ class _WordTileState extends State<_WordTile> {
                 // Delete
                 GestureDetector(
                   onTap: widget.onDelete,
-                  child: const Icon(Icons.close_rounded,
-                      size: 16, color: AppTheme.muted),
+                  child: const Padding(
+                    padding: EdgeInsets.all(2),
+                    child: Icon(Icons.delete_outline_rounded,
+                        size: 16, color: AppTheme.muted),
+                  ),
                 ),
               ],
             ),

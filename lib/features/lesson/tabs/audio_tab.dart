@@ -1,13 +1,25 @@
 import 'package:flutter/material.dart';
 import '../../../app/theme.dart';
 import '../../../models/lesson.dart';
+import '../../../models/notebook_entry.dart';
+import '../../../models/vocab_folder.dart';
+import '../../../services/notebook_service.dart';
 import '../../../services/tts_player_service.dart';
+import '../../../services/vocab_folder_service.dart';
 
 class AudioTab extends StatefulWidget {
   final Lesson lesson;
   final TtsPlayerService ttsPlayer;
+  final NotebookService notebookService;
+  final VocabFolderService folderService;
 
-  const AudioTab({super.key, required this.lesson, required this.ttsPlayer});
+  const AudioTab({
+    super.key,
+    required this.lesson,
+    required this.ttsPlayer,
+    required this.notebookService,
+    required this.folderService,
+  });
 
   @override
   State<AudioTab> createState() => _AudioTabState();
@@ -59,12 +71,29 @@ class _AudioTabState extends State<AudioTab> {
     if (_playerState == PlayerState.playing) {
       widget.ttsPlayer.pause();
     } else {
-      widget.ttsPlayer.play(); // fire-and-forget: state updates via stream
+      widget.ttsPlayer.play();
     }
   }
 
   void _stop() {
     widget.ttsPlayer.stop();
+  }
+
+  Future<void> _saveWordFromLine(int lineIndex) async {
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _SaveWordSheet(
+        lessonId: widget.lesson.id,
+        lessonTitle: widget.lesson.title,
+        notebookService: widget.notebookService,
+        folderService: widget.folderService,
+      ),
+    );
   }
 
   @override
@@ -193,6 +222,7 @@ class _AudioTabState extends State<AudioTab> {
               return GestureDetector(
                 key: _lineKeys[i],
                 onTap: () => widget.ttsPlayer.seekToLine(i),
+                onLongPress: () => _saveWordFromLine(i),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 250),
                   margin: const EdgeInsets.only(bottom: 12),
@@ -234,6 +264,9 @@ class _AudioTabState extends State<AudioTab> {
                             const SizedBox(width: 8),
                             const _PulsingDot(),
                           ],
+                          const Spacer(),
+                          const Icon(Icons.bookmark_add_outlined,
+                              size: 14, color: AppTheme.muted),
                         ],
                       ),
                       const SizedBox(height: 8),
@@ -288,6 +321,221 @@ class _AudioTabState extends State<AudioTab> {
     }
   }
 }
+
+// ── Save word bottom sheet ─────────────────────────────────────────────────────
+
+class _SaveWordSheet extends StatefulWidget {
+  final String lessonId;
+  final String lessonTitle;
+  final NotebookService notebookService;
+  final VocabFolderService folderService;
+
+  const _SaveWordSheet({
+    required this.lessonId,
+    required this.lessonTitle,
+    required this.notebookService,
+    required this.folderService,
+  });
+
+  @override
+  State<_SaveWordSheet> createState() => _SaveWordSheetState();
+}
+
+class _SaveWordSheetState extends State<_SaveWordSheet> {
+  final _wordCtrl = TextEditingController();
+  final _transCtrl = TextEditingController();
+  final _defCtrl = TextEditingController();
+  String? _selectedFolderId;
+  late List<VocabFolder> _folders;
+
+  @override
+  void initState() {
+    super.initState();
+    _folders = widget.folderService.getFoldersForLesson(widget.lessonId);
+  }
+
+  Future<void> _createFolder() async {
+    final ctrl = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Nouveau dossier'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'Nom du dossier'),
+          onSubmitted: (v) => Navigator.pop(context, v),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Annuler')),
+          ElevatedButton(
+              onPressed: () => Navigator.pop(context, ctrl.text),
+              child: const Text('Créer')),
+        ],
+      ),
+    );
+    if (name == null || name.trim().isEmpty) return;
+    final folder =
+        await widget.folderService.createFolder(widget.lessonId, name.trim());
+    setState(() {
+      _folders.add(folder);
+      _selectedFolderId = folder.id;
+    });
+  }
+
+  Future<void> _save() async {
+    final word = _wordCtrl.text.trim();
+    if (word.isEmpty) return;
+    final entry = NotebookEntry(
+      id: '${widget.lessonId}_audio_${word.replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}',
+      word: word,
+      definition: _defCtrl.text.trim(),
+      exampleSentence: '',
+      translation: _transCtrl.text.trim(),
+      lessonId: widget.lessonId,
+      lessonTitle: widget.lessonTitle,
+      savedAt: DateTime.now(),
+      folderId: _selectedFolderId,
+    );
+    await widget.notebookService.save(entry);
+    if (mounted) Navigator.pop(context);
+  }
+
+  @override
+  void dispose() {
+    _wordCtrl.dispose();
+    _transCtrl.dispose();
+    _defCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.of(context).viewInsets.bottom +
+        MediaQuery.of(context).padding.bottom;
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Sauvegarder un mot',
+              style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.onSurface)),
+          const SizedBox(height: 16),
+          _field(_wordCtrl, 'Mot ou expression *', autofocus: true),
+          const SizedBox(height: 10),
+          _field(_transCtrl, 'Traduction (FR)'),
+          const SizedBox(height: 10),
+          _field(_defCtrl, 'Définition (optionnel)', maxLines: 2),
+          const SizedBox(height: 16),
+          const Text('Dossier',
+              style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.onSurface)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _folderChip(null, 'Sans dossier'),
+              ..._folders.map((f) => _folderChip(f.id, f.name)),
+              GestureDetector(
+                onTap: _createFolder,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: AppTheme.primary),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.add, size: 14, color: AppTheme.primary),
+                      SizedBox(width: 4),
+                      Text('Nouveau dossier',
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: AppTheme.primary,
+                              fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          ListenableBuilder(
+            listenable: _wordCtrl,
+            builder: (_, __) => SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _wordCtrl.text.isNotEmpty ? _save : null,
+                child: const Text('Ajouter au Lexique'),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _field(TextEditingController ctrl, String hint,
+      {bool autofocus = false, int maxLines = 1}) {
+    return TextField(
+      controller: ctrl,
+      autofocus: autofocus,
+      maxLines: maxLines,
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(color: AppTheme.muted, fontSize: 13),
+        filled: true,
+        fillColor: AppTheme.surface,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppTheme.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppTheme.border),
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      ),
+    );
+  }
+
+  Widget _folderChip(String? folderId, String label) {
+    final selected = _selectedFolderId == folderId;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedFolderId = folderId),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? AppTheme.primary : AppTheme.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+              color: selected ? AppTheme.primary : AppTheme.border),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: selected ? Colors.white : AppTheme.muted,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Pulsing dot for active line ────────────────────────────────────────────────
 
 class _PulsingDot extends StatefulWidget {
   const _PulsingDot();
