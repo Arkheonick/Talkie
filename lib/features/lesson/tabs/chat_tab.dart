@@ -41,16 +41,13 @@ class _ChatTabState extends State<ChatTab> {
   bool _isProcessing = false;
   bool _isRecording = false;
   bool _isTranscribing = false;
+  DateTime? _recordingStartTime;
 
   @override
   void initState() {
     super.initState();
-    // Stop TTS when user taps the text field or starts typing
     _focusNode.addListener(() {
-      if (_focusNode.hasFocus) _tts.stop();
-    });
-    _textController.addListener(() {
-      if (_textController.text.isNotEmpty) _tts.stop();
+      if (_focusNode.hasFocus) _tts.pausePlayback();
     });
     _init();
   }
@@ -66,7 +63,9 @@ class _ChatTabState extends State<ChatTab> {
       );
       _addMessage('assistant', greeting);
       final ttsText = _stripVocabForTts(greeting);
-      if (ttsText.isNotEmpty) await _tts.speak(ttsText);
+      if (ttsText.isNotEmpty && mounted) {
+        await _tts.speakAtIndex(ttsText, 0);
+      }
     } finally {
       if (mounted) setState(() => _isProcessing = false);
     }
@@ -106,13 +105,25 @@ class _ChatTabState extends State<ChatTab> {
       if (mounted) setState(() => _isProcessing = false);
     }
     if (response != null && mounted) {
-      // Only speak the non-list part — vocab lists are too long for TTS
+      final index = _messages.length - 1;
       final ttsText = _stripVocabForTts(response);
-      if (ttsText.isNotEmpty) await _tts.speak(ttsText);
+      if (ttsText.isNotEmpty) await _tts.speakAtIndex(ttsText, index);
     }
   }
 
-  /// Removes [VOCAB]...[/VOCAB] blocks before TTS — too long to read aloud.
+  static bool _isEmptyTranscription(String text) {
+    final t = text.toLowerCase().trim();
+    if (t.isEmpty || t.split(' ').length < 2) return true;
+    const hallucinations = [
+      'english language',
+      'language learning',
+      'language recording',
+      'thank you for watching',
+      'please subscribe',
+    ];
+    return hallucinations.any((h) => t.contains(h));
+  }
+
   static String _stripVocabForTts(String text) {
     return text
         .replaceAll(RegExp(r'\[VOCAB\].*?\[/VOCAB\]', dotAll: true), '')
@@ -123,14 +134,21 @@ class _ChatTabState extends State<ChatTab> {
   Future<void> _toggleRecording() async {
     if (_isProcessing || _isTranscribing) return;
     if (_isRecording) {
+      final duration = _recordingStartTime == null
+          ? 0
+          : DateTime.now().difference(_recordingStartTime!).inMilliseconds;
       setState(() {
         _isRecording = false;
-        _isTranscribing = true;
+        _isTranscribing = duration >= 1000;
       });
-      final bytes = await _recorder.stopRecording();
-      if (bytes != null && bytes.isNotEmpty) {
-        final text = await _gemini.transcribeAudio(bytes);
-        if (text.isNotEmpty) await _send(text);
+      if (duration >= 1500) {
+        final bytes = await _recorder.stopRecording();
+        if (bytes != null && bytes.isNotEmpty) {
+          final text = await _gemini.transcribeAudio(bytes);
+          if (!_isEmptyTranscription(text)) await _send(text);
+        }
+      } else {
+        await _recorder.stopRecording();
       }
       if (mounted) setState(() => _isTranscribing = false);
       return;
@@ -144,8 +162,9 @@ class _ChatTabState extends State<ChatTab> {
       }
       return;
     }
-    await _tts.stop(); // interrupt professor if still speaking
+    await _tts.pausePlayback();
     await _recorder.startRecording();
+    _recordingStartTime = DateTime.now();
     setState(() => _isRecording = true);
   }
 
@@ -196,6 +215,11 @@ class _ChatTabState extends State<ChatTab> {
               return _Bubble(
                 role: msg.role,
                 text: msg.text,
+                msgIndex: i,
+                ttsService: msg.role == 'assistant' ? _tts : null,
+                ttsText: msg.role == 'assistant'
+                    ? _stripVocabForTts(msg.text)
+                    : '',
                 onSaveWord: msg.role == 'assistant' ? _saveWord : null,
               );
             },
@@ -251,21 +275,24 @@ class _ChatTabState extends State<ChatTab> {
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(color: AppTheme.border),
               ),
-              child: TextField(
-                controller: _textController,
-                focusNode: _focusNode,
-                enabled: !disabled && !_isRecording,
-                decoration: const InputDecoration(
-                  hintText: 'Pose une question...',
-                  hintStyle: TextStyle(color: AppTheme.muted, fontSize: 14),
-                  border: InputBorder.none,
-                  contentPadding:
-                      EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Listener(
+                onPointerDown: (_) => _tts.pausePlayback(),
+                child: TextField(
+                  controller: _textController,
+                  focusNode: _focusNode,
+                  enabled: !disabled && !_isRecording,
+                  decoration: const InputDecoration(
+                    hintText: 'Pose une question...',
+                    hintStyle: TextStyle(color: AppTheme.muted, fontSize: 14),
+                    border: InputBorder.none,
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                  textInputAction: TextInputAction.send,
+                  onSubmitted: _send,
+                  maxLines: 3,
+                  minLines: 1,
                 ),
-                textInputAction: TextInputAction.send,
-                onSubmitted: _send,
-                maxLines: 3,
-                minLines: 1,
               ),
             ),
           ),
@@ -362,49 +389,116 @@ List<_VocabEntry> _parseVocabEntries(String block) {
 class _Bubble extends StatelessWidget {
   final String role;
   final String text;
+  final int msgIndex;
+  final TtsService? ttsService;
+  final String ttsText;
   final void Function({String word, String translation})? onSaveWord;
 
-  const _Bubble({required this.role, required this.text, this.onSaveWord});
+  const _Bubble({
+    required this.role,
+    required this.text,
+    required this.msgIndex,
+    this.ttsService,
+    this.ttsText = '',
+    this.onSaveWord,
+  });
 
   @override
   Widget build(BuildContext context) {
     final isUser = role == 'user';
     final segments = isUser ? <Object>[_TextSeg(text)] : _parseSegments(text);
 
-    return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.85,
-        ),
-        margin: const EdgeInsets.only(bottom: 10),
-        child: Column(
-          crossAxisAlignment:
-              isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: isUser ? AppTheme.primary : Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(18),
-                  topRight: const Radius.circular(18),
-                  bottomLeft: Radius.circular(isUser ? 18 : 4),
-                  bottomRight: Radius.circular(isUser ? 4 : 18),
-                ),
-                border: isUser ? null : Border.all(color: AppTheme.border),
+    final bubbleContent = Container(
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.of(context).size.width * 0.75,
+      ),
+      child: Column(
+        crossAxisAlignment:
+            isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: isUser ? AppTheme.primary : Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: const Radius.circular(18),
+                topRight: const Radius.circular(18),
+                bottomLeft: Radius.circular(isUser ? 18 : 4),
+                bottomRight: Radius.circular(isUser ? 4 : 18),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (final seg in segments)
-                    if (seg is _TextSeg)
-                      _buildText(context, seg.text, isUser)
-                    else if (seg is _VocabSeg)
-                      _buildVocabList(context, seg.entries),
-                ],
-              ),
+              border: isUser ? null : Border.all(color: AppTheme.border),
             ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final seg in segments)
+                  if (seg is _TextSeg)
+                    _buildText(context, seg.text, isUser)
+                  else if (seg is _VocabSeg)
+                    _buildVocabList(context, seg.entries),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (isUser || ttsService == null) {
+      return Align(
+        alignment: Alignment.centerRight,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          child: bubbleContent,
+        ),
+      );
+    }
+
+    // Assistant bubble: play/pause button to the left
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            ValueListenableBuilder<int>(
+              valueListenable: ttsService!.playingIndex,
+              builder: (_, playing, __) {
+                final isPlaying = playing == msgIndex;
+                return GestureDetector(
+                  onTap: () {
+                    if (isPlaying) {
+                      ttsService!.pausePlayback();
+                    } else {
+                      ttsService!.speakAtIndex(ttsText, msgIndex);
+                    }
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isPlaying
+                          ? AppTheme.primary
+                          : AppTheme.primaryLight,
+                      border: Border.all(
+                        color: AppTheme.primary.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Icon(
+                      isPlaying
+                          ? Icons.pause_rounded
+                          : Icons.play_arrow_rounded,
+                      color: isPlaying ? Colors.white : AppTheme.primary,
+                      size: 16,
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(width: 6),
+            bubbleContent,
           ],
         ),
       ),

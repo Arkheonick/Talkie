@@ -1,10 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
 class TtsService {
   final FlutterTts _tts = FlutterTts();
-  bool _isSpeaking = false;
 
-  bool get isSpeaking => _isSpeaking;
+  /// Notifies which message index is currently being spoken (-1 = none).
+  final ValueNotifier<int> playingIndex = ValueNotifier(-1);
 
   Future<void> init() async {
     await _tts.setLanguage('en-US');
@@ -12,11 +13,10 @@ class TtsService {
     await _tts.setVolume(1.0);
     await _tts.setPitch(1.0);
 
-    _tts.setStartHandler(() => _isSpeaking = true);
-    _tts.setCompletionHandler(() => _isSpeaking = false);
-    _tts.setErrorHandler((_) => _isSpeaking = false);
+    _tts.setCompletionHandler(() => playingIndex.value = -1);
+    _tts.setErrorHandler((_) => playingIndex.value = -1);
+    _tts.setCancelHandler(() => playingIndex.value = -1);
 
-    // Prefer a higher-quality voice if available
     final voices = await _tts.getVoices as List?;
     if (voices != null) {
       final englishVoice = voices.firstWhere(
@@ -35,29 +35,45 @@ class TtsService {
     }
   }
 
-  Future<void> speak(String text) async {
+  /// Speak a message and track it by index for play/pause UI.
+  Future<void> speakAtIndex(String text, int index) async {
     await _tts.stop();
-    await _tts.speak(_clean(text));
+    playingIndex.value = index;
+    await _tts.speak(clean(text));
   }
 
-  /// Strip markdown symbols that TTS would read aloud literally.
-  static String _clean(String text) {
-    return text
-        .replaceAll(RegExp(r'\*+'), '')      // *word* / **word**
-        .replaceAll(RegExp(r'_+'), '')        // _word_ / __word__
-        .replaceAll(RegExp(r'#+\s*'), '')     // # headers
-        .replaceAll('`', '')                  // `code`
-        .replaceAll(RegExp(r'\[([^\]]+)\]\([^\)]+\)'), r'$1') // [text](url)
-        .replaceAll(RegExp(r'\n{2,}'), '\n') // collapse blank lines
-        .trim();
+  /// Generic speak without index tracking (used internally).
+  Future<void> speak(String text) async {
+    playingIndex.value = -1;
+    await _tts.stop();
+    await _tts.speak(clean(text));
+  }
+
+  /// Pause/stop current playback (user-initiated).
+  Future<void> pausePlayback() async {
+    playingIndex.value = -1;
+    await _tts.stop();
   }
 
   Future<void> stop() async {
+    playingIndex.value = -1;
     await _tts.stop();
-    _isSpeaking = false;
   }
 
   void dispose() {
     _tts.stop();
+    playingIndex.dispose();
+  }
+
+  /// Strip markdown symbols that TTS would read aloud literally.
+  static String clean(String text) {
+    return text
+        .replaceAll(RegExp(r'\*+'), '')
+        .replaceAll(RegExp(r'_+'), '')
+        .replaceAll(RegExp(r'#+\s*'), '')
+        .replaceAll('`', '')
+        .replaceAll(RegExp(r'\[([^\]]+)\]\([^\)]+\)'), r'$1')
+        .replaceAll(RegExp(r'\n{2,}'), '\n')
+        .trim();
   }
 }
