@@ -3,7 +3,6 @@ import '../../../app/theme.dart';
 import '../../../models/lesson.dart';
 import '../../../models/notebook_entry.dart';
 import '../../../models/user_profile.dart';
-import '../../../models/vocab_folder.dart';
 import '../../../services/audio_recorder_service.dart';
 import '../../../services/gemini_service.dart';
 import '../../../services/notebook_service.dart';
@@ -183,8 +182,8 @@ class _ChatTabState extends State<ChatTab> {
         lessonTitle: widget.lesson.title,
         notebookService: widget.notebookService,
         folderService: widget.folderService,
-        initialWord: word,
-        initialTranslation: translation,
+        word: word,
+        translation: translation,
       ),
     );
   }
@@ -696,16 +695,16 @@ class _SaveWordSheet extends StatefulWidget {
   final String lessonTitle;
   final NotebookService notebookService;
   final VocabFolderService folderService;
-  final String initialWord;
-  final String initialTranslation;
+  final String word;
+  final String translation;
 
   const _SaveWordSheet({
     required this.lessonId,
     required this.lessonTitle,
     required this.notebookService,
     required this.folderService,
-    this.initialWord = '',
-    this.initialTranslation = '',
+    required this.word,
+    this.translation = '',
   });
 
   @override
@@ -713,21 +712,23 @@ class _SaveWordSheet extends StatefulWidget {
 }
 
 class _SaveWordSheetState extends State<_SaveWordSheet> {
-  late final TextEditingController _wordCtrl;
-  late final TextEditingController _transCtrl;
-  final _defCtrl = TextEditingController();
-  String? _selectedFolderId;
-  late List<VocabFolder> _folders;
-
-  @override
-  void initState() {
-    super.initState();
-    _wordCtrl = TextEditingController(text: widget.initialWord);
-    _transCtrl = TextEditingController(text: widget.initialTranslation);
-    _folders = widget.folderService.getFoldersForLesson(widget.lessonId);
+  Future<void> _save(String? folderId) async {
+    final entry = NotebookEntry(
+      id: '${widget.lessonId}_chat_${widget.word.replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}',
+      word: widget.word,
+      definition: '',
+      exampleSentence: '',
+      translation: widget.translation,
+      lessonId: widget.lessonId,
+      lessonTitle: widget.lessonTitle,
+      savedAt: DateTime.now(),
+      folderId: folderId,
+    );
+    await widget.notebookService.save(entry);
+    if (mounted) Navigator.pop(context);
   }
 
-  Future<void> _createFolder() async {
+  Future<void> _createFolderAndSave() async {
     final ctrl = TextEditingController();
     final name = await showDialog<String>(
       context: context,
@@ -752,156 +753,94 @@ class _SaveWordSheetState extends State<_SaveWordSheet> {
     if (name == null || name.trim().isEmpty) return;
     final folder =
         await widget.folderService.createFolder(widget.lessonId, name.trim());
-    setState(() {
-      _folders.add(folder);
-      _selectedFolderId = folder.id;
-    });
-  }
-
-  Future<void> _save() async {
-    final word = _wordCtrl.text.trim();
-    if (word.isEmpty) return;
-    final entry = NotebookEntry(
-      id: '${widget.lessonId}_chat_${word.replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}',
-      word: word,
-      definition: _defCtrl.text.trim(),
-      exampleSentence: '',
-      translation: _transCtrl.text.trim(),
-      lessonId: widget.lessonId,
-      lessonTitle: widget.lessonTitle,
-      savedAt: DateTime.now(),
-      folderId: _selectedFolderId,
-    );
-    await widget.notebookService.save(entry);
-    if (mounted) Navigator.pop(context);
-  }
-
-  @override
-  void dispose() {
-    _wordCtrl.dispose();
-    _transCtrl.dispose();
-    _defCtrl.dispose();
-    super.dispose();
+    await _save(folder.id);
   }
 
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom +
         MediaQuery.of(context).padding.bottom;
-    return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottom),
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 24, 20, 20 + bottom),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Sauvegarder un mot',
-              style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.onSurface)),
-          const SizedBox(height: 16),
-          _field(_wordCtrl, 'Mot ou expression *', autofocus: widget.initialWord.isEmpty),
-          const SizedBox(height: 10),
-          _field(_transCtrl, 'Traduction (FR)'),
-          const SizedBox(height: 10),
-          _field(_defCtrl, 'Définition (optionnel)', maxLines: 2),
-          const SizedBox(height: 16),
-          const Text('Dossier',
-              style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.onSurface)),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+          Text(
+            '"${widget.word}"',
+            style: const TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Sauvegarder dans...',
+            style: TextStyle(fontSize: 13, color: AppTheme.muted),
+          ),
+          const SizedBox(height: 20),
+          Row(
             children: [
-              _folderChip(null, 'Sans dossier'),
-              ..._folders.map((f) => _folderChip(f.id, f.name)),
-              GestureDetector(
-                onTap: _createFolder,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: AppTheme.primary),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.add, size: 14, color: AppTheme.primary),
-                      SizedBox(width: 4),
-                      Text('Nouveau dossier',
-                          style: TextStyle(
-                              fontSize: 12,
-                              color: AppTheme.primary,
-                              fontWeight: FontWeight.w600)),
-                    ],
-                  ),
+              Expanded(
+                child: _pickerBtn(
+                  icon: Icons.bookmark_rounded,
+                  label: 'Sans dossier',
+                  accent: false,
+                  onTap: () => _save(null),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _pickerBtn(
+                  icon: Icons.create_new_folder_rounded,
+                  label: '+ Nouveau dossier',
+                  accent: true,
+                  onTap: _createFolderAndSave,
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 20),
-          ListenableBuilder(
-            listenable: _wordCtrl,
-            builder: (_, __) => SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _wordCtrl.text.trim().isNotEmpty ? _save : null,
-                child: const Text('Ajouter au Lexique'),
-              ),
-            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _field(TextEditingController ctrl, String hint,
-      {bool autofocus = false, int maxLines = 1}) {
-    return TextField(
-      controller: ctrl,
-      autofocus: autofocus,
-      maxLines: maxLines,
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: AppTheme.muted, fontSize: 13),
-        filled: true,
-        fillColor: AppTheme.surface,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppTheme.border),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppTheme.border),
-        ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      ),
-    );
-  }
-
-  Widget _folderChip(String? folderId, String label) {
-    final selected = _selectedFolderId == folderId;
+  Widget _pickerBtn({
+    required IconData icon,
+    required String label,
+    required bool accent,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
-      onTap: () => setState(() => _selectedFolderId = folderId),
+      onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
         decoration: BoxDecoration(
-          color: selected ? AppTheme.primary : AppTheme.surface,
-          borderRadius: BorderRadius.circular(20),
+          color: accent ? AppTheme.primary : Colors.white,
           border: Border.all(
-              color: selected ? AppTheme.primary : AppTheme.border),
+              color: accent ? AppTheme.primary : AppTheme.border),
+          borderRadius: BorderRadius.circular(12),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: selected ? Colors.white : AppTheme.muted,
-          ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon,
+                size: 17,
+                color: accent ? Colors.white : AppTheme.onSurface),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: accent ? Colors.white : AppTheme.onSurface,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

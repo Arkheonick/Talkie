@@ -251,21 +251,13 @@ class _FolderPickerSheet extends StatefulWidget {
 }
 
 class _FolderPickerSheetState extends State<_FolderPickerSheet> {
-  late List<VocabFolder> _folders;
-
-  @override
-  void initState() {
-    super.initState();
-    _folders = List.from(widget.folders);
-  }
-
   Future<void> _createFolder() async {
     final name = await _showNameDialog(context, 'Nouveau dossier', '');
     if (name == null || name.trim().isEmpty) return;
     final folder =
         await widget.folderService.createFolder(widget.lessonId, name.trim());
-    setState(() => _folders.add(folder));
     widget.onFoldersChanged();
+    if (mounted) Navigator.pop(context, folder.id);
   }
 
   @override
@@ -286,70 +278,73 @@ class _FolderPickerSheetState extends State<_FolderPickerSheet> {
             ),
           ),
           const SizedBox(height: 16),
-          // No folder (root)
-          _FolderOption(
-            icon: Icons.bookmark_rounded,
-            label: 'Lexique (sans dossier)',
-            onTap: () => Navigator.pop(context, null),
-          ),
-          if (_folders.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            const Divider(height: 1, color: AppTheme.border),
-            const SizedBox(height: 8),
-            ..._folders.map((f) => _FolderOption(
-                  icon: Icons.folder_rounded,
-                  label: f.name,
-                  onTap: () => Navigator.pop(context, f.id),
-                )),
-          ],
-          const SizedBox(height: 8),
-          const Divider(height: 1, color: AppTheme.border),
-          const SizedBox(height: 8),
-          _FolderOption(
-            icon: Icons.create_new_folder_rounded,
-            label: 'Créer un nouveau dossier',
-            color: AppTheme.primary,
-            onTap: _createFolder,
+          Row(
+            children: [
+              Expanded(
+                child: _pickerBtn(
+                  icon: Icons.bookmark_rounded,
+                  label: 'Sans dossier',
+                  accent: false,
+                  onTap: () => Navigator.pop(context, null),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _pickerBtn(
+                  icon: Icons.create_new_folder_rounded,
+                  label: '+ Nouveau dossier',
+                  accent: true,
+                  onTap: _createFolder,
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
-}
 
-class _FolderOption extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color? color;
-  final VoidCallback onTap;
-
-  const _FolderOption({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final c = color ?? AppTheme.onSurface;
+  Widget _pickerBtn({
+    required IconData icon,
+    required String label,
+    required bool accent,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+        decoration: BoxDecoration(
+          color: accent ? AppTheme.primary : Colors.white,
+          border: Border.all(
+              color: accent ? AppTheme.primary : AppTheme.border),
+          borderRadius: BorderRadius.circular(12),
+        ),
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 20, color: c),
-            const SizedBox(width: 12),
-            Text(label,
+            Icon(icon,
+                size: 17,
+                color: accent ? Colors.white : AppTheme.onSurface),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                    fontSize: 15, fontWeight: FontWeight.w500, color: c)),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: accent ? Colors.white : AppTheme.onSurface,
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 }
+
 
 Future<String?> _showNameDialog(
     BuildContext context, String title, String initial) async {
