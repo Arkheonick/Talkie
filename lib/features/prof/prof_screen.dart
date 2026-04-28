@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../app/theme.dart';
+import '../../models/cefr_level.dart';
 import '../../models/notebook_entry.dart';
 import '../../models/user_profile.dart';
 import '../../services/audio_recorder_service.dart';
@@ -65,7 +66,11 @@ class _ProfScreenState extends State<ProfScreen> {
     _profile = _profileService.load();
     _gemini.init();
     await _tts.init();
-    _gemini.startFreeConversation(_profile.level);
+    await _startConversation(_profile.effectiveDiscussionLevel);
+  }
+
+  Future<void> _startConversation(CefrLevel level) async {
+    _gemini.startFreeConversation(level);
     setState(() => _isProcessing = true);
     String greeting = '';
     try {
@@ -82,6 +87,136 @@ class _ProfScreenState extends State<ProfScreen> {
     if (greeting.isNotEmpty && mounted) {
       await _tts.speakAtIndex(_stripVocabForTts(greeting), 0);
     }
+  }
+
+  Future<void> _changeLevel(CefrLevel level) async {
+    await _tts.stop();
+    _profile.discussionLevel = level;
+    await _profileService.save(_profile);
+    setState(() {
+      _messages.clear();
+      _isProcessing = false;
+      _initialized = false;
+    });
+    await _startConversation(level);
+  }
+
+  void _showLevelPicker() {
+    final current = _profile.effectiveDiscussionLevel;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppTheme.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Niveau de discussion',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Changer le niveau relancera la conversation.',
+              style: TextStyle(fontSize: 13, color: AppTheme.muted),
+            ),
+            const SizedBox(height: 16),
+            ...CefrLevel.values.map((lvl) {
+              final isSelected = current == lvl;
+              return GestureDetector(
+                onTap: () {
+                  Navigator.pop(context);
+                  if (lvl != current) _changeLevel(lvl);
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color:
+                        isSelected ? AppTheme.primaryLight : AppTheme.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color:
+                          isSelected ? AppTheme.primary : AppTheme.border,
+                      width: isSelected ? 1.5 : 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppTheme.primary
+                              : Colors.white,
+                          borderRadius: BorderRadius.circular(7),
+                          border: Border.all(
+                              color: isSelected
+                                  ? AppTheme.primary
+                                  : AppTheme.border),
+                        ),
+                        child: Center(
+                          child: Text(
+                            lvl.code,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 12,
+                              color: isSelected
+                                  ? Colors.white
+                                  : AppTheme.muted,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        lvl.labelFr,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: isSelected
+                              ? FontWeight.w600
+                              : FontWeight.w400,
+                          color: isSelected
+                              ? AppTheme.primary
+                              : AppTheme.onSurface,
+                        ),
+                      ),
+                      if (isSelected) ...[
+                        const Spacer(),
+                        Icon(Icons.check_rounded,
+                            color: AppTheme.primary, size: 18),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
   }
 
   void _addMsg(String role, String text) {
@@ -233,9 +368,20 @@ class _ProfScreenState extends State<ProfScreen> {
                 const Text('Discussion — Alex',
                     style:
                         TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
-                Text(
-                  'Niveau ${_profile.level.code} · Conversation libre',
-                  style: const TextStyle(fontSize: 11, color: AppTheme.muted),
+                GestureDetector(
+                  onTap: _showLevelPicker,
+                  child: Row(
+                    children: [
+                      Text(
+                        'Niveau ${_profile.effectiveDiscussionLevel.code} · Conversation libre',
+                        style: const TextStyle(
+                            fontSize: 11, color: AppTheme.muted),
+                      ),
+                      const SizedBox(width: 3),
+                      const Icon(Icons.edit_rounded,
+                          size: 10, color: AppTheme.muted),
+                    ],
+                  ),
                 ),
               ],
             ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../app/theme.dart';
+import '../../models/cefr_level.dart';
 import '../../models/quiz_result.dart';
 import '../../models/quiz_session.dart';
 import '../../models/quiz_theme.dart';
@@ -23,6 +24,7 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
   UserProfile _profile = UserProfile.defaults();
   Map<String, QuizResult> _bestResults = {};
   bool _loading = true;
+  bool _levelOpen = false;
 
   @override
   void initState() {
@@ -52,12 +54,18 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
     });
   }
 
+  Future<void> _selectLevel(CefrLevel level) async {
+    _profile.quizLevel = level;
+    await _profileService.save(_profile);
+    setState(() => _levelOpen = false);
+  }
+
   void _startQuiz(QuizTheme theme) {
     final session = QuizSession(
       themeId: theme.id,
       themeLabel: theme.displayLabel,
       themeEmoji: theme.emoji,
-      level: _profile.level,
+      level: _profile.effectiveQuizLevel,
     );
     Navigator.push(
       context,
@@ -144,32 +152,176 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
   }
 
   Widget _buildLevelBadge() {
+    final level = _profile.effectiveQuizLevel;
+    final isCustom = _profile.quizLevel != null;
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppTheme.border),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: _levelOpen ? AppTheme.primary : AppTheme.border,
+              width: _levelOpen ? 1.5 : 1,
+            ),
           ),
-          child: Row(
+          child: Column(
             children: [
-              Icon(Icons.school_rounded, size: 18, color: AppTheme.primary),
-              const SizedBox(width: 8),
-              Text(
-                'Niveau : ${_profile.level.code} — ${_profile.level.labelFr}',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: AppTheme.onSurface,
+              GestureDetector(
+                onTap: () => setState(() => _levelOpen = !_levelOpen),
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 14),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 38,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: _levelOpen
+                              ? AppTheme.primary
+                              : AppTheme.primaryLight,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Center(
+                          child: Text(
+                            level.code,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13,
+                              color: _levelOpen
+                                  ? Colors.white
+                                  : AppTheme.primary,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Niveau du quiz',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15,
+                                color: AppTheme.onSurface,
+                              ),
+                            ),
+                            Text(
+                              isCustom
+                                  ? level.labelFr
+                                  : '${level.labelFr} · même qu\'Explorer',
+                              style: const TextStyle(
+                                  fontSize: 12, color: AppTheme.muted),
+                            ),
+                          ],
+                        ),
+                      ),
+                      AnimatedRotation(
+                        turns: _levelOpen ? 0.5 : 0,
+                        duration: const Duration(milliseconds: 200),
+                        child: const Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            color: AppTheme.muted),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              const Spacer(),
-              Text(
-                'Les questions s\'adaptent',
-                style: TextStyle(fontSize: 12, color: AppTheme.muted),
+              AnimatedCrossFade(
+                duration: const Duration(milliseconds: 200),
+                crossFadeState: _levelOpen
+                    ? CrossFadeState.showSecond
+                    : CrossFadeState.showFirst,
+                firstChild: const SizedBox(width: double.infinity),
+                secondChild: Column(
+                  children: [
+                    const Divider(height: 1, color: AppTheme.border),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                      child: Column(
+                        children: CefrLevel.values.map((lvl) {
+                          final isSelected = level == lvl;
+                          return GestureDetector(
+                            onTap: () => _selectLevel(lvl),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              margin: const EdgeInsets.only(bottom: 6),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? AppTheme.primaryLight
+                                    : AppTheme.surface,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? AppTheme.primary
+                                      : AppTheme.border,
+                                  width: isSelected ? 1.5 : 1,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 32,
+                                    height: 28,
+                                    decoration: BoxDecoration(
+                                      color: isSelected
+                                          ? AppTheme.primary
+                                          : Colors.white,
+                                      borderRadius:
+                                          BorderRadius.circular(6),
+                                      border: Border.all(
+                                          color: isSelected
+                                              ? AppTheme.primary
+                                              : AppTheme.border),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        lvl.code,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 11,
+                                          color: isSelected
+                                              ? Colors.white
+                                              : AppTheme.muted,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    lvl.labelFr,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w600
+                                          : FontWeight.w400,
+                                      color: isSelected
+                                          ? AppTheme.primary
+                                          : AppTheme.onSurface,
+                                    ),
+                                  ),
+                                  if (isSelected) ...[
+                                    const Spacer(),
+                                    Icon(Icons.check_rounded,
+                                        color: AppTheme.primary, size: 18),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
