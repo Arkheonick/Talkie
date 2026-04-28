@@ -2,8 +2,6 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
-import '../models/session.dart';
-import '../models/vocabulary_entry.dart';
 import '../models/lesson.dart';
 import '../models/cefr_level.dart';
 import '../models/quiz_question.dart';
@@ -140,66 +138,6 @@ class GeminiService {
       if (after.isNotEmpty) after,
     ];
     return parts.join('\n\n');
-  }
-
-  Future<List<VocabularyEntry>> extractVocabulary(
-      List<ChatMessage> messages) async {
-    if (_model == null) return [];
-
-    final conversation = messages
-        .map((m) => '${m.role == 'user' ? 'Student' : 'Teacher'}: ${m.text}')
-        .join('\n');
-
-    final prompt = '''
-From this English learning conversation, extract 4-6 key vocabulary words or phrases the student encountered or struggled with.
-
-Conversation:
-$conversation
-
-Return ONLY a JSON array (no markdown, no explanation):
-[
-  {
-    "word": "...",
-    "definition": "...",
-    "exampleSentence": "...",
-    "translation": "... (French)"
-  }
-]
-''';
-
-    try {
-      final response = await _model!.generateContent([Content.text(prompt)]);
-      final text = response.text ?? '[]';
-      final cleaned = text
-          .trim()
-          .replaceAll('```json', '')
-          .replaceAll('```', '')
-          .trim();
-      return _parseVocabularyJson(cleaned);
-    } catch (_) {
-      return [];
-    }
-  }
-
-  List<VocabularyEntry> _parseVocabularyJson(String json) {
-    try {
-      final entries = <VocabularyEntry>[];
-      final regex = RegExp(
-        r'"word"\s*:\s*"([^"]+)".*?"definition"\s*:\s*"([^"]+)".*?"exampleSentence"\s*:\s*"([^"]+)".*?"translation"\s*:\s*"([^"]+)"',
-        dotAll: true,
-      );
-      for (final match in regex.allMatches(json)) {
-        entries.add(VocabularyEntry(
-          word: match.group(1) ?? '',
-          definition: match.group(2) ?? '',
-          exampleSentence: match.group(3) ?? '',
-          translation: match.group(4) ?? '',
-        ));
-      }
-      return entries;
-    } catch (_) {
-      return [];
-    }
   }
 
   Future<String> transcribeAudio(Uint8List audioBytes) async {

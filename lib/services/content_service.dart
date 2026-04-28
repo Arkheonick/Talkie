@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/services.dart';
 import '../models/lesson.dart';
-import '../models/cefr_level.dart';
 
 class ContentService {
   static const _manifestPath = 'assets/content/manifest.json';
@@ -34,9 +33,6 @@ class ContentService {
 
   List<Lesson> getByDomain(String domain) =>
       _lessons.where((l) => l.domain == domain).toList();
-
-  List<Lesson> getByLevel(CefrLevel level) =>
-      _lessons.where((l) => l.level == level).toList();
 
   List<String> get domains =>
       _lessons.map((l) => l.domain).toSet().toList()..sort();

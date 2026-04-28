@@ -6,8 +6,6 @@ class UserProfile {
   CefrLevel? discussionLevel;
   bool onboardingCompleted;
   Set<String> completedLessonIds;
-  int streakDays;
-  DateTime? lastActiveDate;
 
   UserProfile({
     this.level = CefrLevel.b1,
@@ -15,8 +13,6 @@ class UserProfile {
     this.discussionLevel,
     this.onboardingCompleted = false,
     Set<String>? completedLessonIds,
-    this.streakDays = 0,
-    this.lastActiveDate,
   }) : completedLessonIds = completedLessonIds ?? {};
 
   CefrLevel get effectiveQuizLevel => quizLevel ?? level;
@@ -28,8 +24,6 @@ class UserProfile {
         if (discussionLevel != null) 'discussionLevel': discussionLevel!.code,
         'onboardingCompleted': onboardingCompleted,
         'completedLessonIds': completedLessonIds.toList(),
-        'streakDays': streakDays,
-        'lastActiveDate': lastActiveDate?.toIso8601String(),
       };
 
   factory UserProfile.fromJson(Map<String, dynamic> j) => UserProfile(
@@ -44,10 +38,6 @@ class UserProfile {
         completedLessonIds: Set<String>.from(
           (j['completedLessonIds'] as List?) ?? [],
         ),
-        streakDays: j['streakDays'] as int? ?? 0,
-        lastActiveDate: j['lastActiveDate'] != null
-            ? DateTime.parse(j['lastActiveDate'] as String)
-            : null,
       );
 
   factory UserProfile.defaults() => UserProfile();
