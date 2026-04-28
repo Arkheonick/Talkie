@@ -18,7 +18,7 @@ class _MainShellState extends State<MainShell> {
   int _index = 0;
   late final PageController _pageController;
 
-  // Discussion (index 2) auto-speaks on initState — only build it when selected.
+  // Discussion (index 3) auto-speaks on initState — only build it when selected.
   // All other tabs can be pre-built during swipe for smooth animation.
   final Set<int> _visited = {0};
 
@@ -29,8 +29,8 @@ class _MainShellState extends State<MainShell> {
   static const _tabs = [
     _TabItem(icon: Icons.home_outlined,               activeIcon: Icons.home_rounded,               label: 'Accueil'),
     _TabItem(icon: Icons.explore_outlined,             activeIcon: Icons.explore_rounded,             label: 'Explorer'),
-    _TabItem(icon: Icons.chat_bubble_outline_rounded,  activeIcon: Icons.chat_bubble_rounded,         label: 'Discussion'),
     _TabItem(icon: Icons.quiz_outlined,                activeIcon: Icons.quiz_rounded,                label: 'Quiz'),
+    _TabItem(icon: Icons.chat_bubble_outline_rounded,  activeIcon: Icons.chat_bubble_rounded,         label: 'Discussion'),
     _TabItem(icon: Icons.menu_book_outlined,           activeIcon: Icons.menu_book_rounded,           label: 'Lexique'),
   ];
 
@@ -55,7 +55,7 @@ class _MainShellState extends State<MainShell> {
     final page = _pageController.page ?? 0.0;
     bool changed = false;
     for (final i in [page.floor(), page.ceil()]) {
-      if (i >= 0 && i < 5 && i != 2 && !_visited.contains(i)) {
+      if (i >= 0 && i < 5 && i != 3 && !_visited.contains(i)) {
         _visited.add(i);
         changed = true;
       }
@@ -82,8 +82,8 @@ class _MainShellState extends State<MainShell> {
     switch (i) {
       case 0: return const HomeScreen();
       case 1: return const ExploreScreen();
-      case 2: return const ProfScreen();
-      case 3: return const QuizSetupScreen();
+      case 2: return const QuizSetupScreen();
+      case 3: return const ProfScreen();
       case 4: return const LexiqueScreen();
       default: return const SizedBox.expand();
     }
@@ -100,7 +100,7 @@ class _MainShellState extends State<MainShell> {
           AppAudio.stopAll();
           // During programmatic navigation (tab bar tap), don't add transit
           // pages to _visited — the destination was already added by _selectTab.
-          // This prevents Discussion from being built mid-animation and auto-speaking.
+          // This prevents Discussion (index 3) from being built mid-animation.
           if (!_isProgrammaticNav) _visited.add(i);
           setState(() => _index = i);
         },
