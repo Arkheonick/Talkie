@@ -16,16 +16,26 @@ class LexiqueScreen extends StatefulWidget {
 class _LexiqueScreenState extends State<LexiqueScreen> {
   final _notebookService = NotebookService();
   final _folderService = VocabFolderService();
+  final _searchController = TextEditingController();
 
   List<NotebookEntry> _entries = [];
   List<VocabFolder> _folders = [];
   Map<String, String> _aliases = {};
   bool _loading = true;
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _load();
+    _searchController.addListener(
+        () => setState(() => _searchQuery = _searchController.text.trim()));
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -236,37 +246,149 @@ class _LexiqueScreenState extends State<LexiqueScreen> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : grouped.isEmpty
-              ? _empty()
-              : ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: grouped.entries.map((lessonEntry) {
-                    final lessonId = lessonEntry.key;
-                    final lessonEntries = lessonEntry.value;
-                    final defaultTitle =
-                        lessonEntries.first.lessonTitle.isNotEmpty
-                            ? lessonEntries.first.lessonTitle
-                            : lessonId;
-                    final displayName = _lessonName(lessonId, defaultTitle);
-                    final lessonFolders = _folders
-                        .where((f) => f.lessonId == lessonId)
-                        .toList();
-                    return _LessonGroup(
-                      lessonId: lessonId,
-                      displayName: displayName,
-                      entries: lessonEntries,
-                      folders: lessonFolders,
-                      onRename: () =>
-                          _renameLessonGroup(lessonId, displayName),
-                      onCreateFolder: () => _createFolder(lessonId),
-                      onRenameFolder: _renameFolder,
-                      onDeleteFolder: _deleteFolder,
-                      onDeleteEntry: _deleteEntry,
-                      onToggleMastered: _toggleMastered,
-                      onMoveEntry: (e) => _moveEntry(e, lessonId),
-                    );
-                  }).toList(),
+          : Column(
+              children: [
+                _buildSearchBar(),
+                Expanded(
+                  child: _searchQuery.isNotEmpty
+                      ? _buildSearchResults()
+                      : grouped.isEmpty
+                          ? _empty()
+                          : ListView(
+                              padding: const EdgeInsets.all(16),
+                              children: grouped.entries.map((lessonEntry) {
+                                final lessonId = lessonEntry.key;
+                                final lessonEntries = lessonEntry.value;
+                                final defaultTitle =
+                                    lessonEntries.first.lessonTitle.isNotEmpty
+                                        ? lessonEntries.first.lessonTitle
+                                        : lessonId;
+                                final displayName =
+                                    _lessonName(lessonId, defaultTitle);
+                                final lessonFolders = _folders
+                                    .where((f) => f.lessonId == lessonId)
+                                    .toList();
+                                return _LessonGroup(
+                                  lessonId: lessonId,
+                                  displayName: displayName,
+                                  entries: lessonEntries,
+                                  folders: lessonFolders,
+                                  onRename: () =>
+                                      _renameLessonGroup(lessonId, displayName),
+                                  onCreateFolder: () =>
+                                      _createFolder(lessonId),
+                                  onRenameFolder: _renameFolder,
+                                  onDeleteFolder: _deleteFolder,
+                                  onDeleteEntry: _deleteEntry,
+                                  onToggleMastered: _toggleMastered,
+                                  onMoveEntry: (e) => _moveEntry(e, lessonId),
+                                );
+                              }).toList(),
+                            ),
                 ),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+      child: TextField(
+        controller: _searchController,
+        decoration: InputDecoration(
+          hintText: 'Rechercher un mot…',
+          hintStyle: TextStyle(color: AppTheme.muted, fontSize: 14),
+          prefixIcon: const Icon(Icons.search_rounded,
+              size: 20, color: AppTheme.muted),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? GestureDetector(
+                  onTap: () => _searchController.clear(),
+                  child: const Icon(Icons.close_rounded,
+                      size: 18, color: AppTheme.muted),
+                )
+              : null,
+          filled: true,
+          fillColor: AppTheme.surface,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: AppTheme.border),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: AppTheme.primary, width: 1.5),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchResults() {
+    final q = _searchQuery.toLowerCase();
+    final matches = _entries
+        .where((e) =>
+            e.word.toLowerCase().contains(q) ||
+            e.translation.toLowerCase().contains(q))
+        .toList();
+
+    if (matches.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text('🔍', style: TextStyle(fontSize: 36)),
+            const SizedBox(height: 12),
+            Text(
+              'Aucun résultat pour « $_searchQuery »',
+              style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: AppTheme.muted),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Text(
+            '${matches.length} résultat${matches.length > 1 ? 's' : ''}',
+            style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.muted,
+                letterSpacing: 0.4),
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppTheme.border),
+          ),
+          child: Column(
+            children: matches
+                .map((e) => _WordTile(
+                      entry: e,
+                      onDelete: () => _deleteEntry(e),
+                      onToggleMastered: () => _toggleMastered(e),
+                      onMove: () => _moveEntry(e, e.lessonId),
+                    ))
+                .toList(),
+          ),
+        ),
+      ],
     );
   }
 
