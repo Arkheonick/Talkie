@@ -90,6 +90,27 @@ class _ProfScreenState extends State<ProfScreen> {
   }
 
   Future<void> _changeLevel(CefrLevel level) async {
+    if (_messages.isNotEmpty) {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Changer de niveau ?'),
+          content: const Text(
+              'La conversation actuelle sera effacée et relancée au nouveau niveau.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Confirmer'),
+            ),
+          ],
+        ),
+      );
+      if (confirm != true) return;
+    }
     await _tts.stop();
     _profile.discussionLevel = level;
     await _profileService.save(_profile);
@@ -368,20 +389,42 @@ class _ProfScreenState extends State<ProfScreen> {
                 const Text('Discussion — Alex',
                     style:
                         TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
-                GestureDetector(
-                  onTap: _showLevelPicker,
-                  child: Row(
-                    children: [
-                      Text(
-                        'Niveau ${_profile.effectiveDiscussionLevel.code} · Conversation libre',
-                        style: const TextStyle(
-                            fontSize: 11, color: AppTheme.muted),
+                Row(
+                  children: [
+                    const Text(
+                      'Conversation libre · ',
+                      style: TextStyle(fontSize: 11, color: AppTheme.muted),
+                    ),
+                    GestureDetector(
+                      onTap: _showLevelPicker,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryLight,
+                          borderRadius: BorderRadius.circular(5),
+                          border: Border.all(
+                              color: AppTheme.primary.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _profile.effectiveDiscussionLevel.code,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 2),
+                            const Icon(Icons.arrow_drop_down_rounded,
+                                size: 13, color: AppTheme.primary),
+                          ],
+                        ),
                       ),
-                      const SizedBox(width: 3),
-                      const Icon(Icons.edit_rounded,
-                          size: 10, color: AppTheme.muted),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ],
             ),
