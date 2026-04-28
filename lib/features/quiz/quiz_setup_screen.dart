@@ -23,6 +23,7 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
 
   UserProfile _profile = UserProfile.defaults();
   Map<String, QuizResult> _bestResults = {};
+  List<QuizTheme> _recentCustomThemes = [];
   bool _loading = true;
 
   @override
@@ -46,9 +47,26 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
       final best = _resultService.getBestForTheme(theme.id);
       if (best != null) results[theme.id] = best;
     }
+    // Derive recent custom themes from saved results (deduplicated by label)
+    final allResults = _resultService.loadAll();
+    final seen = <String>{};
+    final customThemes = <QuizTheme>[];
+    for (final r in allResults) {
+      if (r.themeId.startsWith('custom_') && seen.add(r.themeLabel)) {
+        customThemes.add(QuizTheme(
+          id: r.themeId,
+          label: r.themeLabel,
+          emoji: r.themeEmoji,
+          isCustom: true,
+          userPrompt: r.themeLabel,
+        ));
+        if (customThemes.length >= 5) break;
+      }
+    }
     setState(() {
       _profile = profile;
       _bestResults = results;
+      _recentCustomThemes = customThemes;
       _loading = false;
     });
   }
@@ -368,6 +386,60 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
                 ),
               ],
             ),
+            if (_recentCustomThemes.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Text(
+                'Récents',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.muted,
+                  letterSpacing: 0.4,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _recentCustomThemes.map((theme) {
+                  return GestureDetector(
+                    onTap: () => _startQuiz(theme),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppTheme.border),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.04),
+                            blurRadius: 4,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(theme.emoji,
+                              style: const TextStyle(fontSize: 13)),
+                          const SizedBox(width: 6),
+                          Text(
+                            theme.label,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: AppTheme.onSurface,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
           ],
         ),
       ),
