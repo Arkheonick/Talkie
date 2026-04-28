@@ -6,6 +6,7 @@ import '../models/session.dart';
 import '../models/vocabulary_entry.dart';
 import '../models/lesson.dart';
 import '../models/cefr_level.dart';
+import '../models/quiz_question.dart';
 
 class GeminiService {
   GenerativeModel? _model;
@@ -444,6 +445,80 @@ FORMAT RULES — output is read by text-to-speech:
 Keep responses under 120 words. Speak naturally.
 Start by greeting the student and asking what they would like to talk about today.
 ''';
+  }
+
+  Future<List<QuizQuestion>> generateQuizTier({
+    required String theme,
+    required CefrLevel level,
+    required int tier,
+  }) async {
+    if (_generationModel == null) return [];
+
+    final difficultyDesc = switch (tier) {
+      <= 4  => 'basic vocabulary and simple present tense',
+      <= 8  => 'common expressions, past and future tenses',
+      <= 12 => 'complex tenses, collocations, everyday idioms',
+      <= 16 => 'advanced idioms, register differences, nuanced vocabulary',
+      _     => 'C1/C2: subtle errors, formal/academic style, complex syntax',
+    };
+
+    final prompt = '''
+Generate exactly 10 multiple-choice English quiz questions for a French speaker.
+
+Theme: "$theme"
+Student level: ${level.code}
+Difficulty tier: $tier/20 — $difficultyDesc
+
+Use this exact type distribution:
+- 3 of type "translation": identify the correct French translation of an English word/phrase
+- 3 of type "fill_blank": choose the missing word to complete a sentence (use ___ for the blank)
+- 2 of type "formulation": identify the grammatically correct English sentence
+- 2 of type "syntax": choose the correctly ordered English sentence
+
+Rules:
+- All questions must relate to "$theme"
+- Vocabulary complexity must match ${level.code} level at tier $tier difficulty
+- Each question has exactly 4 options
+- correct_index is 0-based (0, 1, 2, or 3)
+- Distribute correct answers roughly evenly across all 4 positions
+- explanation: one short English sentence explaining the correct answer
+- No duplicate questions or options within this set
+
+Return ONLY a raw JSON array, no markdown, no code fences, no explanation:
+[
+  {
+    "type": "translation|fill_blank|formulation|syntax",
+    "question": "...",
+    "options": ["...", "...", "...", "..."],
+    "correct_index": 0,
+    "explanation": "..."
+  }
+]
+''';
+
+    for (int attempt = 0; attempt < 3; attempt++) {
+      try {
+        final response = await _generationModel!.generateContent(
+          [Content.text(prompt)],
+        );
+        final raw = response.text ?? '';
+        final cleaned =
+            raw.replaceAll('```json', '').replaceAll('```', '').trim();
+        final start = cleaned.indexOf('[');
+        final end = cleaned.lastIndexOf(']');
+        if (start == -1 || end == -1) continue;
+        final list =
+            jsonDecode(cleaned.substring(start, end + 1)) as List;
+        final questions = list
+            .map((e) =>
+                QuizQuestion.fromJson(e as Map<String, dynamic>))
+            .toList();
+        if (questions.length >= 8) return questions.take(10).toList();
+      } catch (_) {
+        if (attempt == 2) return [];
+      }
+    }
+    return [];
   }
 
   String _buildSystemPrompt(String topicId, String topicTitle) {

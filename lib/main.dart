@@ -11,6 +11,7 @@ Future<void> main() async {
   await dotenv.load(fileName: '.env');
   await Hive.initFlutter();
   await Hive.openBox('sessions');
+  await Hive.openBox('quiz_results');
 
   final profileService = UserProfileService();
   await profileService.init();

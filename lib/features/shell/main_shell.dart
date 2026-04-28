@@ -5,6 +5,7 @@ import '../home/home_screen.dart';
 import '../explore/explore_screen.dart';
 import '../prof/prof_screen.dart';
 import '../notebook/lexique_screen.dart';
+import '../quiz/quiz_setup_screen.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -26,10 +27,11 @@ class _MainShellState extends State<MainShell> {
   bool _isProgrammaticNav = false;
 
   static const _tabs = [
-    _TabItem(icon: Icons.home_outlined,          activeIcon: Icons.home_rounded,          label: 'Accueil'),
-    _TabItem(icon: Icons.explore_outlined,        activeIcon: Icons.explore_rounded,        label: 'Explorer'),
-    _TabItem(icon: Icons.chat_bubble_outline_rounded, activeIcon: Icons.chat_bubble_rounded, label: 'Discussion'),
-    _TabItem(icon: Icons.menu_book_outlined,      activeIcon: Icons.menu_book_rounded,      label: 'Lexique'),
+    _TabItem(icon: Icons.home_outlined,               activeIcon: Icons.home_rounded,               label: 'Accueil'),
+    _TabItem(icon: Icons.explore_outlined,             activeIcon: Icons.explore_rounded,             label: 'Explorer'),
+    _TabItem(icon: Icons.chat_bubble_outline_rounded,  activeIcon: Icons.chat_bubble_rounded,         label: 'Discussion'),
+    _TabItem(icon: Icons.quiz_outlined,                activeIcon: Icons.quiz_rounded,                label: 'Quiz'),
+    _TabItem(icon: Icons.menu_book_outlined,           activeIcon: Icons.menu_book_rounded,           label: 'Lexique'),
   ];
 
   @override
@@ -53,7 +55,7 @@ class _MainShellState extends State<MainShell> {
     final page = _pageController.page ?? 0.0;
     bool changed = false;
     for (final i in [page.floor(), page.ceil()]) {
-      if (i >= 0 && i < 4 && i != 2 && !_visited.contains(i)) {
+      if (i >= 0 && i < 5 && i != 2 && !_visited.contains(i)) {
         _visited.add(i);
         changed = true;
       }
@@ -81,7 +83,8 @@ class _MainShellState extends State<MainShell> {
       case 0: return const HomeScreen();
       case 1: return const ExploreScreen();
       case 2: return const ProfScreen();
-      case 3: return const LexiqueScreen();
+      case 3: return const QuizSetupScreen();
+      case 4: return const LexiqueScreen();
       default: return const SizedBox.expand();
     }
   }
@@ -92,7 +95,7 @@ class _MainShellState extends State<MainShell> {
       body: PageView.builder(
         controller: _pageController,
         physics: const ClampingScrollPhysics(),
-        itemCount: 4,
+        itemCount: 5,
         onPageChanged: (i) {
           AppAudio.stopAll();
           // During programmatic navigation (tab bar tap), don't add transit
