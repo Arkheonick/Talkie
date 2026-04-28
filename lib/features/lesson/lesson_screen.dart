@@ -104,8 +104,8 @@ class _LessonScreenState extends State<LessonScreen>
           labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
           tabs: const [
             Tab(icon: Icon(Icons.headphones_rounded, size: 18), text: 'Écoute'),
-            Tab(icon: Icon(Icons.chat_bubble_rounded, size: 18), text: 'Chat'),
             Tab(icon: Icon(Icons.book_rounded, size: 18), text: 'Vocabulaire'),
+            Tab(icon: Icon(Icons.chat_bubble_rounded, size: 18), text: 'Chat'),
           ],
         ),
       ),
@@ -118,14 +118,14 @@ class _LessonScreenState extends State<LessonScreen>
             notebookService: _notebookService,
             folderService: _folderService,
           ),
-          ChatTab(
+          VocabTab(
             lesson: widget.lesson,
-            profile: widget.profile,
             notebookService: _notebookService,
             folderService: _folderService,
           ),
-          VocabTab(
+          ChatTab(
             lesson: widget.lesson,
+            profile: widget.profile,
             notebookService: _notebookService,
             folderService: _folderService,
           ),
