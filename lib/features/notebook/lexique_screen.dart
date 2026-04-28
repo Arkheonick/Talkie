@@ -563,6 +563,24 @@ class _WordTile extends StatefulWidget {
 
 class _WordTileState extends State<_WordTile> {
   bool _expanded = false;
+  late bool _mastered;
+
+  @override
+  void initState() {
+    super.initState();
+    _mastered = widget.entry.isMastered;
+  }
+
+  @override
+  void didUpdateWidget(_WordTile old) {
+    super.didUpdateWidget(old);
+    _mastered = widget.entry.isMastered;
+  }
+
+  void _handleToggle() {
+    setState(() => _mastered = !_mastered);
+    widget.onToggleMastered();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -574,8 +592,7 @@ class _WordTileState extends State<_WordTile> {
         GestureDetector(
           onTap: () => setState(() => _expanded = !_expanded),
           child: Padding(
-            padding:
-                EdgeInsets.fromLTRB(left, 10, 12, 10),
+            padding: EdgeInsets.fromLTRB(left, 10, 12, 10),
             child: Row(
               children: [
                 Expanded(
@@ -587,10 +604,10 @@ class _WordTileState extends State<_WordTile> {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: e.isMastered
+                          color: _mastered
                               ? AppTheme.muted
                               : AppTheme.onSurface,
-                          decoration: e.isMastered
+                          decoration: _mastered
                               ? TextDecoration.lineThrough
                               : null,
                         ),
@@ -598,27 +615,55 @@ class _WordTileState extends State<_WordTile> {
                       if (e.translation.isNotEmpty)
                         Text(
                           e.translation,
-                          style: const TextStyle(
-                              fontSize: 12, color: AppTheme.primary),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: _mastered
+                                ? AppTheme.muted
+                                : AppTheme.primary,
+                          ),
                         ),
                     ],
                   ),
                 ),
+                // Mastered toggle
+                GestureDetector(
+                  onTap: _handleToggle,
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 200),
+                      child: _mastered
+                          ? const Icon(
+                              Icons.check_circle_rounded,
+                              key: ValueKey(true),
+                              size: 18,
+                              color: AppTheme.accent,
+                            )
+                          : const Icon(
+                              Icons.check_circle_outline_rounded,
+                              key: ValueKey(false),
+                              size: 18,
+                              color: AppTheme.muted,
+                            ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 2),
                 // Move
                 GestureDetector(
                   onTap: widget.onMove,
                   child: const Padding(
-                    padding: EdgeInsets.all(2),
+                    padding: EdgeInsets.all(4),
                     child: Icon(Icons.drive_file_move_rounded,
                         size: 16, color: AppTheme.muted),
                   ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 2),
                 // Delete
                 GestureDetector(
                   onTap: widget.onDelete,
                   child: const Padding(
-                    padding: EdgeInsets.all(2),
+                    padding: EdgeInsets.all(4),
                     child: Icon(Icons.delete_outline_rounded,
                         size: 16, color: AppTheme.muted),
                   ),
