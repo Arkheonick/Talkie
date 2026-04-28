@@ -148,7 +148,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
     return Scaffold(
       backgroundColor: AppTheme.surface,
       appBar: AppBar(
-        title: const Text('Explorer'),
+        title: Text(_selectedDomain != null
+            ? (ContentService.domainMeta[_selectedDomain!]?['label'] ?? _selectedDomain!)
+            : 'Apprendre'),
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
         leading: _selectedDomain != null
