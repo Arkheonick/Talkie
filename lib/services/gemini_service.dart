@@ -365,6 +365,18 @@ Strict requirements:
     ]);
   }
 
+  void restoreFreeConversation(
+      CefrLevel level, List<Map<String, String>> history) {
+    assert(_model != null, 'Call init() before restoreFreeConversation()');
+    final prompt = _buildFreeConversationPrompt(level);
+    _chat = _model!.startChat(history: [
+      Content.model([TextPart(prompt)]),
+      ...history.map((m) => m['role'] == 'user'
+          ? Content.text(m['text']!)
+          : Content.model([TextPart(m['text']!)])),
+    ]);
+  }
+
   void endSession() {
     _chat = null;
   }
