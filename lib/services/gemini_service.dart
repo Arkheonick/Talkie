@@ -409,7 +409,54 @@ Start by greeting the student and asking what they would like to talk about toda
       <= 8  => 'common expressions, past and future tenses',
       <= 12 => 'complex tenses, collocations, everyday idioms',
       <= 16 => 'advanced idioms, register differences, nuanced vocabulary',
-      _     => 'C1/C2: subtle errors, formal/academic style, complex syntax',
+      _     => 'subtle errors, formal/academic style, complex syntax',
+    };
+
+    final typeDistribution = switch (level) {
+      CefrLevel.b2 =>
+        '- 2 of type "translation": translate a full sentence or idiomatic phrase (never a single word)\n'
+        '- 3 of type "fill_blank": use near-synonym distractors that are plausible but wrong in context\n'
+        '- 3 of type "formulation": test word-choice precision and register (formal vs informal)\n'
+        '- 2 of type "syntax": test complex structures (reported speech, conditionals, inversion)',
+      CefrLevel.c1 =>
+        '- 1 of type "translation": sentence-level, testing connotation or fixed expression\n'
+        '- 3 of type "fill_blank": advanced collocations and phrasal verbs — distractors must fool a B2 student\n'
+        '- 3 of type "formulation": nuanced distinctions (refuse/decline/reject/deny, make/do/have, etc.)\n'
+        '- 3 of type "syntax": inversion, complex subordination, cleft sentences',
+      CefrLevel.c2 =>
+        '- 1 of type "translation": idiomatic expression or culturally specific phrase\n'
+        '- 2 of type "fill_blank": sophisticated collocations, lexical connotation traps\n'
+        '- 4 of type "formulation": style/tone register, near-identical meaning but wrong in context\n'
+        '- 3 of type "syntax": academic/formal structures, ellipsis, complex embedding',
+      _ =>
+        '- 3 of type "translation": identify the correct French translation of an English word/phrase\n'
+        '- 3 of type "fill_blank": choose the missing word to complete a sentence (use ___ for the blank)\n'
+        '- 2 of type "formulation": identify the grammatically correct English sentence\n'
+        '- 2 of type "syntax": choose the correctly ordered English sentence',
+    };
+
+    final levelModifier = switch (level) {
+      CefrLevel.b2 =>
+        '\nB2 challenge rules:\n'
+        '- Distractors must be subtle — never obviously wrong. Use plausible near-synonyms.\n'
+        '- Include phrasal verbs, collocations and multi-word expressions.\n'
+        '- Test register awareness (formal vs informal vs neutral).\n'
+        '- Avoid basic everyday vocabulary entirely.\n',
+      CefrLevel.c1 =>
+        '\nC1 challenge rules:\n'
+        '- Every distractor must plausibly fool a solid B2 speaker.\n'
+        '- Test advanced idioms, false friends, connotation differences.\n'
+        '- Include academic register traps and formal writing conventions.\n'
+        '- Questions must require genuine mastery — no guessing by elimination.\n'
+        '- Avoid all intermediate vocabulary.\n',
+      CefrLevel.c2 =>
+        '\nC2 challenge rules:\n'
+        '- Questions must challenge a C1 speaker. Near-native mastery required.\n'
+        '- All distractors must be convincing to a well-educated B2/C1 speaker.\n'
+        '- Test subtle tense nuances, lexical connotation, idiomatic precision.\n'
+        '- Include style distinctions: literary, academic, journalistic, colloquial.\n'
+        '- Zero tolerance for common or predictable vocabulary.\n',
+      _ => '',
     };
 
     final prompt = '''
@@ -418,12 +465,9 @@ Generate exactly 10 multiple-choice English quiz questions for a French speaker.
 Theme: "$theme"
 Student level: ${level.code}
 Difficulty tier: $tier/20 — $difficultyDesc
-
+$levelModifier
 Use this exact type distribution:
-- 3 of type "translation": identify the correct French translation of an English word/phrase
-- 3 of type "fill_blank": choose the missing word to complete a sentence (use ___ for the blank)
-- 2 of type "formulation": identify the grammatically correct English sentence
-- 2 of type "syntax": choose the correctly ordered English sentence
+$typeDistribution
 
 Rules:
 - All questions must relate to "$theme"
