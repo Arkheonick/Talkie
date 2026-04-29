@@ -372,7 +372,7 @@ List<_VocabEntry> _parseVocabEntries(String block) {
     final num = int.tryParse(m.group(1)!) ?? (entries.length + 1);
     final rest = m.group(2) ?? '';
     // Support both pipe separator and dash separators
-    final parts = rest.split(RegExp(r'\s*[|—–-]\s*')).map((p) => p.trim()).toList();
+    final parts = rest.split(RegExp(r'\s*[|—–]\s*')).map((p) => p.trim()).toList();
     if (parts.isEmpty || parts[0].isEmpty) continue;
     entries.add(_VocabEntry(
       num,

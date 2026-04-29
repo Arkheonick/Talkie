@@ -340,7 +340,7 @@ VOCAB LIST FORMAT — use this every time you produce a list:
 1. English word or phrase — French translation
 2. English word or phrase — French translation
 [/VOCAB]
-Write one intro sentence before the list. Provide 5 to 8 items. Use exactly this format: number, dot, space, word or phrase, space-dash-space, French translation. Nothing else on the line.
+Write one intro sentence before the list. Provide 5 to 8 items. Use exactly this format: number, dot, space, word or phrase, space, em-dash (—), space, French translation. Nothing else on the line. The separator MUST be an em-dash (—), never a hyphen (-).
 
 OTHER INTENTS:
 - Question about the lesson → answer directly, add one tip
@@ -380,7 +380,7 @@ VOCAB LIST FORMAT — use this every time you produce a list:
 1. English word or phrase — French translation
 2. English word or phrase — French translation
 [/VOCAB]
-Write one intro sentence before the list. Provide 5 to 8 items.
+Write one intro sentence before the list. Provide 5 to 8 items. The separator MUST be an em-dash (—), never a hyphen (-).
 
 FOR CONVERSATION (non-vocabulary turns):
 - Have a natural, engaging conversation on the topic
