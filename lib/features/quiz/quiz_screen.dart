@@ -216,7 +216,7 @@ class _QuizScreenState extends State<QuizScreen>
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              'Tier ${_session.currentTier}/20',
+              'Partie ${_session.currentTier}/20',
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
@@ -236,13 +236,13 @@ class _QuizScreenState extends State<QuizScreen>
         children: [
           const CircularProgressIndicator(strokeWidth: 2.5),
           const SizedBox(height: 20),
-          Text(
-            'Génération du Tier ${_session.currentTier}…',
-            style: TextStyle(color: AppTheme.muted, fontSize: 15),
+          const Text(
+            'Génération du quiz…',
+            style: TextStyle(color: AppTheme.onSurface, fontSize: 15, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 6),
           Text(
-            '10 questions adaptées à ton niveau',
+            'Dans quelques secondes !',
             style: TextStyle(color: AppTheme.muted, fontSize: 13),
           ),
         ],

@@ -82,11 +82,13 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+      builder: (_) => SingleChildScrollView(
+        child: Padding(
+        padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(context).padding.bottom + 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -185,6 +187,7 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
           ],
         ),
       ),
+      ),
     );
   }
 
@@ -235,27 +238,39 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
             child: Container(
               margin: const EdgeInsets.only(right: 16),
               padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
                 color: AppTheme.primaryLight,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                     color: AppTheme.primary.withValues(alpha: 0.3)),
               ),
-              child: Row(
+              child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    level.code,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
+                  const Text(
+                    'Mon niveau',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
                       color: AppTheme.primary,
                     ),
                   ),
-                  const SizedBox(width: 3),
-                  const Icon(Icons.arrow_drop_down_rounded,
-                      size: 16, color: AppTheme.primary),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        level.code,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.primary,
+                        ),
+                      ),
+                      const Icon(Icons.arrow_drop_down_rounded,
+                          size: 14, color: AppTheme.primary),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -266,9 +281,9 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
           ? const Center(child: CircularProgressIndicator())
           : CustomScrollView(
               slivers: [
+                _buildCustomSection(),
                 _buildSuggestedTitle(),
                 _buildThemeGrid(),
-                _buildCustomSection(),
                 const SliverToBoxAdapter(child: SizedBox(height: 32)),
               ],
             ),
@@ -310,7 +325,7 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
           crossAxisCount: 2,
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
-          childAspectRatio: 1.4,
+          childAspectRatio: 1.9,
         ),
       ),
     );
@@ -324,7 +339,7 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Créer mon thème',
+              'Je choisis mon thème',
               style: Theme.of(context)
                   .textTheme
                   .titleLarge

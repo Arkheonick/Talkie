@@ -147,11 +147,13 @@ class _ProfScreenState extends State<ProfScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+      builder: (_) => SingleChildScrollView(
+        child: Padding(
+        padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(context).padding.bottom + 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -256,6 +258,7 @@ class _ProfScreenState extends State<ProfScreen> {
             }),
           ],
         ),
+      ),
       ),
     );
   }
@@ -409,50 +412,60 @@ class _ProfScreenState extends State<ProfScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Discussion — Alex',
+                const Text('Discussion libre',
                     style:
                         TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
-                Row(
-                  children: [
-                    const Text(
-                      'Conversation libre · ',
-                      style: TextStyle(fontSize: 11, color: AppTheme.muted),
-                    ),
-                    GestureDetector(
-                      onTap: _showLevelPicker,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryLight,
-                          borderRadius: BorderRadius.circular(5),
-                          border: Border.all(
-                              color: AppTheme.primary.withValues(alpha: 0.3)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              _profile.effectiveDiscussionLevel.code,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: AppTheme.primary,
-                              ),
-                            ),
-                            const SizedBox(width: 2),
-                            const Icon(Icons.arrow_drop_down_rounded,
-                                size: 13, color: AppTheme.primary),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
+                Text(
+                  'Parler, corriger, enregistrer des mots',
+                  style: TextStyle(fontSize: 11, color: AppTheme.muted),
                 ),
               ],
             ),
           ],
         ),
+        actions: [
+          GestureDetector(
+            onTap: _showLevelPicker,
+            child: Container(
+              margin: const EdgeInsets.only(right: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryLight,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                    color: AppTheme.primary.withValues(alpha: 0.3)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Mon niveau',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.primary,
+                    ),
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _profile.effectiveDiscussionLevel.code,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.primary,
+                        ),
+                      ),
+                      const Icon(Icons.arrow_drop_down_rounded,
+                          size: 14, color: AppTheme.primary),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
       body: Column(
         children: [
