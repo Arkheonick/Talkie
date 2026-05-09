@@ -53,7 +53,7 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
     return Scaffold(
       backgroundColor: AppTheme.surface,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.surface,
         surfaceTintColor: Colors.transparent,
         title: Text('Flashcards · ${_index + 1} / ${_deck.length}'),
       ),
@@ -106,7 +106,7 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
                         width: 44,
                         height: 44,
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: AppTheme.surfaceHigh,
                           shape: BoxShape.circle,
                           border: Border.all(color: AppTheme.border),
                         ),
@@ -144,7 +144,7 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
                             ? Icons.check_rounded
                             : Icons.arrow_forward_ios_rounded,
                         size: 16,
-                        color: Colors.white,
+                        color: AppTheme.surfaceHigh,
                       ),
                     ),
                   ),
@@ -170,7 +170,7 @@ class _FlashCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 36),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.surfaceHigh,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AppTheme.border),
         boxShadow: [
@@ -257,7 +257,7 @@ class _FlashCard extends StatelessWidget {
             child: const Text(
               'FR',
               style: TextStyle(
-                color: Colors.white,
+                color: AppTheme.surfaceHigh,
                 fontWeight: FontWeight.w700,
                 fontSize: 11,
               ),

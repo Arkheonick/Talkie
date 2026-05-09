@@ -42,6 +42,8 @@ dependencies:
   # PDF
   pdf: ^3.11.1
   printing: ^5.13.1
+  # Fonts
+  google_fonts: ^6.2.1
   # Config
   flutter_dotenv: ^5.2.1
   # Utils

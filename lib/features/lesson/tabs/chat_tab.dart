@@ -173,7 +173,7 @@ class _ChatTabState extends State<ChatTab> {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -234,7 +234,7 @@ class _ChatTabState extends State<ChatTab> {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 24),
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.surfaceHigh,
         border: Border(top: BorderSide(color: AppTheme.border)),
       ),
       child: Row(
@@ -261,7 +261,7 @@ class _ChatTabState extends State<ChatTab> {
                     )
                   : Icon(
                       _isRecording ? Icons.stop_rounded : Icons.mic_rounded,
-                      color: Colors.white,
+                      color: AppTheme.surfaceHigh,
                       size: 22,
                     ),
             ),
@@ -418,7 +418,7 @@ class _Bubble extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: isUser ? AppTheme.primary : Colors.white,
+              color: isUser ? AppTheme.primary : AppTheme.surfaceHigh,
               borderRadius: BorderRadius.only(
                 topLeft: const Radius.circular(18),
                 topRight: const Radius.circular(18),
@@ -817,7 +817,7 @@ class _SaveWordSheetState extends State<_SaveWordSheet> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
         decoration: BoxDecoration(
-          color: accent ? AppTheme.primary : Colors.white,
+          color: accent ? AppTheme.primary : AppTheme.surfaceHigh,
           border: Border.all(
               color: accent ? AppTheme.primary : AppTheme.border),
           borderRadius: BorderRadius.circular(12),
@@ -883,7 +883,7 @@ class _TypingIndicatorState extends State<_TypingIndicator>
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppTheme.surfaceHigh,
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(18),
             topRight: Radius.circular(18),

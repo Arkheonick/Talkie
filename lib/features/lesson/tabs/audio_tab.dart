@@ -83,7 +83,7 @@ class _AudioTabState extends State<AudioTab> {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -112,7 +112,7 @@ class _AudioTabState extends State<AudioTab> {
         Container(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
           decoration: const BoxDecoration(
-            color: Colors.white,
+            color: AppTheme.surfaceHigh,
             border: Border(bottom: BorderSide(color: AppTheme.border)),
           ),
           child: Row(
@@ -131,7 +131,7 @@ class _AudioTabState extends State<AudioTab> {
                     _playerState == PlayerState.playing
                         ? Icons.pause_rounded
                         : Icons.play_arrow_rounded,
-                    color: Colors.white,
+                    color: AppTheme.surfaceHigh,
                     size: 28,
                   ),
                 ),
@@ -230,7 +230,7 @@ class _AudioTabState extends State<AudioTab> {
                   decoration: BoxDecoration(
                     color: isCurrent
                         ? AppTheme.primaryLight
-                        : Colors.white,
+                        : AppTheme.surfaceHigh,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
                       color: isCurrent ? AppTheme.primary : AppTheme.border,

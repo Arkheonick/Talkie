@@ -90,7 +90,7 @@ class _VocabTabState extends State<VocabTab> {
     return showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -123,7 +123,7 @@ class _VocabTabState extends State<VocabTab> {
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppTheme.surfaceHigh,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: isSaved
@@ -315,7 +315,7 @@ class _FolderPickerSheetState extends State<_FolderPickerSheet> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
         decoration: BoxDecoration(
-          color: accent ? AppTheme.primary : Colors.white,
+          color: accent ? AppTheme.primary : AppTheme.surfaceHigh,
           border: Border.all(
               color: accent ? AppTheme.primary : AppTheme.border),
           borderRadius: BorderRadius.circular(12),

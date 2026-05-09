@@ -76,7 +76,7 @@ class _MainShellState extends State<MainShell> {
   }
 
   Widget _buildScreen(int i) {
-    if (!_visited.contains(i)) return const ColoredBox(color: Colors.white);
+    if (!_visited.contains(i)) return const ColoredBox(color: AppTheme.bg);
     switch (i) {
       case 0: return const ExploreScreen();
       case 1: return const QuizSetupScreen();
@@ -106,7 +106,7 @@ class _MainShellState extends State<MainShell> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: _selectTab,
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.surface,
         indicatorColor: AppTheme.primaryLight,
         elevation: 0,
         surfaceTintColor: Colors.transparent,

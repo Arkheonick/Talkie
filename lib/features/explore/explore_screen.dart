@@ -35,6 +35,20 @@ class _ExploreScreenState extends State<ExploreScreen> {
   bool _levelOpen = false;
   List<Lesson> _generatedLessons = [];
 
+  static Color _domainColor(String domain) {
+    switch (domain) {
+      case 'travel':  return AppTheme.themeVoyage;
+      case 'work':    return AppTheme.themeTravail;
+      case 'daily':   return AppTheme.themeQuotidien;
+      case 'sport':   return AppTheme.themeSport;
+      case 'culture': return AppTheme.themeCulture;
+      case 'tech':    return AppTheme.themeTech;
+      case 'health':  return AppTheme.themeSante;
+      case 'social':  return AppTheme.themeSocial;
+      default:        return AppTheme.primary;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -211,42 +225,59 @@ class _ExploreScreenState extends State<ExploreScreen> {
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
-            mainAxisSpacing: 8,
-            crossAxisSpacing: 8,
-            childAspectRatio: 3.2,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 1.25,
           ),
           itemCount: _contentService.domains.length,
           itemBuilder: (_, i) {
             final domain = _contentService.domains[i];
             final meta = ContentService.domainMeta[domain] ??
                 {'label': domain, 'emoji': '📖'};
+            final color = _domainColor(domain);
             return GestureDetector(
               onTap: () => setState(() => _selectedDomain = domain),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: AppTheme.surfaceHigh,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppTheme.border),
+                  gradient: LinearGradient(
+                    colors: [
+                      color.withValues(alpha: 0.22),
+                      color.withValues(alpha: 0.06),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                      color: color.withValues(alpha: 0.4), width: 1.5),
                 ),
-                child: Row(
-                  children: [
-                    Text(meta['emoji']!, style: const TextStyle(fontSize: 20)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(meta['emoji']!,
+                          style: const TextStyle(fontSize: 30)),
+                      const Spacer(),
+                      Text(
                         meta['label']!,
                         style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
                           color: AppTheme.onSurface,
                         ),
-                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                    const Icon(Icons.chevron_right_rounded,
-                        size: 16, color: AppTheme.muted),
-                  ],
+                      const SizedBox(height: 2),
+                      Text(
+                        'Explorer →',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: color,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );
@@ -479,11 +510,25 @@ class _GenerateCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceHigh,
-        borderRadius: BorderRadius.circular(14),
+        gradient: LinearGradient(
+          colors: isRecording
+              ? [
+                  const Color(0xFFEF4444).withValues(alpha: 0.2),
+                  AppTheme.surfaceHigh,
+                ]
+              : [
+                  AppTheme.primary.withValues(alpha: 0.18),
+                  AppTheme.surfaceHigh,
+                ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isRecording ? const Color(0xFFEF4444) : AppTheme.border,
-          width: isRecording ? 1.5 : 1,
+          color: isRecording
+              ? const Color(0xFFEF4444).withValues(alpha: 0.5)
+              : AppTheme.primary.withValues(alpha: 0.35),
+          width: 1.5,
         ),
       ),
       child: Column(
@@ -853,26 +898,24 @@ class _SectionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
-          textAlign: TextAlign.center,
           style: const TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
             color: AppTheme.onSurface,
-            letterSpacing: -0.3,
+            letterSpacing: -0.5,
           ),
         ),
         if (subtitle != null)
           Padding(
-            padding: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.only(top: 6),
             child: Text(
               subtitle!,
-              textAlign: TextAlign.center,
               style: const TextStyle(
-                  fontSize: 12, color: AppTheme.muted, height: 1.5),
+                  fontSize: 13, color: AppTheme.muted, height: 1.5),
             ),
           ),
       ],

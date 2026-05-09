@@ -325,7 +325,7 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
           crossAxisCount: 2,
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
-          childAspectRatio: 1.9,
+          childAspectRatio: 1.3,
         ),
       ),
     );
@@ -466,61 +466,66 @@ class _ThemeCard extends StatelessWidget {
     required this.onTap,
   });
 
+  static Color _themeColor(String id) {
+    switch (id) {
+      case 'travel':   return AppTheme.themeVoyage;
+      case 'work':     return AppTheme.themeTravail;
+      case 'daily':    return AppTheme.themeQuotidien;
+      case 'sport':    return AppTheme.themeSport;
+      case 'culture':  return AppTheme.themeCulture;
+      case 'tech':     return AppTheme.themeTech;
+      case 'health':   return AppTheme.themeSante;
+      case 'social':   return AppTheme.themeSocial;
+      default:         return AppTheme.primary;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final hasPlayed = best != null;
+    final color = _themeColor(theme.id);
     return GestureDetector(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: AppTheme.surfaceHigh,
-          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            colors: [
+              color.withValues(alpha: 0.22),
+              color.withValues(alpha: 0.06),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: hasPlayed
-                ? AppTheme.primary.withValues(alpha: 0.3)
-                : AppTheme.border,
+                ? color.withValues(alpha: 0.55)
+                : color.withValues(alpha: 0.3),
+            width: 1.5,
           ),
         ),
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Text(theme.emoji, style: const TextStyle(fontSize: 22)),
+                Text(theme.emoji, style: const TextStyle(fontSize: 26)),
                 const Spacer(),
                 if (hasPlayed)
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 7, vertical: 3),
                     decoration: BoxDecoration(
-                      color: AppTheme.primary.withValues(alpha: 0.1),
+                      color: color.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      'Tier ${best!.bestTier}',
+                      'T${best!.bestTier}',
                       style: TextStyle(
                         fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.primary,
-                      ),
-                    ),
-                  )
-                else
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: AppTheme.surface,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppTheme.border),
-                    ),
-                    child: Text(
-                      'Nouveau',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: AppTheme.muted,
+                        fontWeight: FontWeight.w700,
+                        color: color,
                       ),
                     ),
                   ),
@@ -531,17 +536,21 @@ class _ThemeCard extends StatelessWidget {
               theme.label,
               style: const TextStyle(
                 fontSize: 15,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
                 color: AppTheme.onSurface,
               ),
             ),
-            if (hasPlayed) ...[
-              const SizedBox(height: 2),
+            const SizedBox(height: 2),
+            if (hasPlayed)
               Text(
-                '${best!.lastScore}/10 au dernier tier',
-                style: TextStyle(fontSize: 11, color: AppTheme.muted),
+                '${best!.lastScore}/10',
+                style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600),
+              )
+            else
+              Text(
+                'Nouveau',
+                style: TextStyle(fontSize: 11, color: color.withValues(alpha: 0.7)),
               ),
-            ],
           ],
         ),
       ),
