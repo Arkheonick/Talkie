@@ -70,9 +70,9 @@ class _LessonScreenState extends State<LessonScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.bg,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.surface,
         surfaceTintColor: Colors.transparent,
         title: Row(
           children: [

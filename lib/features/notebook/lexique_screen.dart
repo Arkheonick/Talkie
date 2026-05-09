@@ -170,11 +170,6 @@ class _LexiqueScreenState extends State<LexiqueScreen> {
     _reload();
   }
 
-  Future<void> _toggleMastered(NotebookEntry entry) async {
-    await _notebookService.toggleMastered(entry);
-    _reload();
-  }
-
   // ── Move entry to folder ───────────────────────────────────────────────────
 
   Future<void> _moveEntry(NotebookEntry entry, String lessonId) async {
@@ -182,7 +177,7 @@ class _LexiqueScreenState extends State<LexiqueScreen> {
         _folders.where((f) => f.lessonId == lessonId).toList();
     final chosen = await showModalBottomSheet<String?>(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.surface,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -201,12 +196,12 @@ class _LexiqueScreenState extends State<LexiqueScreen> {
   @override
   Widget build(BuildContext context) {
     final grouped = _byLesson;
-    final toLearn = _entries.where((e) => !e.isMastered).toList();
+    final toLearn = _entries;
 
     return Scaffold(
-      backgroundColor: AppTheme.surface,
+      backgroundColor: AppTheme.bg,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.surface,
         surfaceTintColor: Colors.transparent,
         title: Row(
           children: [
@@ -280,7 +275,6 @@ class _LexiqueScreenState extends State<LexiqueScreen> {
                                   onRenameFolder: _renameFolder,
                                   onDeleteFolder: _deleteFolder,
                                   onDeleteEntry: _deleteEntry,
-                                  onToggleMastered: _toggleMastered,
                                   onMoveEntry: (e) => _moveEntry(e, lessonId),
                                 );
                               }).toList(),
@@ -293,7 +287,7 @@ class _LexiqueScreenState extends State<LexiqueScreen> {
 
   Widget _buildSearchBar() {
     return Container(
-      color: Colors.white,
+      color: AppTheme.surface,
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
       child: TextField(
         controller: _searchController,
@@ -373,7 +367,7 @@ class _LexiqueScreenState extends State<LexiqueScreen> {
         ),
         Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppTheme.surfaceHigh,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: AppTheme.border),
           ),
@@ -382,7 +376,6 @@ class _LexiqueScreenState extends State<LexiqueScreen> {
                 .map((e) => _WordTile(
                       entry: e,
                       onDelete: () => _deleteEntry(e),
-                      onToggleMastered: () => _toggleMastered(e),
                       onMove: () => _moveEntry(e, e.lessonId),
                     ))
                 .toList(),
@@ -429,7 +422,6 @@ class _LessonGroup extends StatefulWidget {
   final void Function(VocabFolder) onRenameFolder;
   final void Function(VocabFolder) onDeleteFolder;
   final void Function(NotebookEntry) onDeleteEntry;
-  final void Function(NotebookEntry) onToggleMastered;
   final void Function(NotebookEntry) onMoveEntry;
 
   const _LessonGroup({
@@ -442,7 +434,6 @@ class _LessonGroup extends StatefulWidget {
     required this.onRenameFolder,
     required this.onDeleteFolder,
     required this.onDeleteEntry,
-    required this.onToggleMastered,
     required this.onMoveEntry,
   });
 
@@ -464,7 +455,7 @@ class _LessonGroupState extends State<_LessonGroup> {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.surfaceHigh,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppTheme.border),
       ),
@@ -540,7 +531,6 @@ class _LessonGroupState extends State<_LessonGroup> {
                 onRename: () => widget.onRenameFolder(folder),
                 onDelete: () => widget.onDeleteFolder(folder),
                 onDeleteEntry: widget.onDeleteEntry,
-                onToggleMastered: widget.onToggleMastered,
                 onMoveEntry: widget.onMoveEntry,
               );
             }),
@@ -560,7 +550,6 @@ class _LessonGroupState extends State<_LessonGroup> {
               ...unsorted.map((e) => _WordTile(
                     entry: e,
                     onDelete: () => widget.onDeleteEntry(e),
-                    onToggleMastered: () => widget.onToggleMastered(e),
                     onMove: () => widget.onMoveEntry(e),
                   )),
             ],
@@ -580,7 +569,6 @@ class _FolderGroup extends StatefulWidget {
   final VoidCallback onRename;
   final VoidCallback onDelete;
   final void Function(NotebookEntry) onDeleteEntry;
-  final void Function(NotebookEntry) onToggleMastered;
   final void Function(NotebookEntry) onMoveEntry;
 
   const _FolderGroup({
@@ -589,7 +577,6 @@ class _FolderGroup extends StatefulWidget {
     required this.onRename,
     required this.onDelete,
     required this.onDeleteEntry,
-    required this.onToggleMastered,
     required this.onMoveEntry,
   });
 
@@ -653,7 +640,6 @@ class _FolderGroupState extends State<_FolderGroup> {
           ...widget.entries.map((e) => _WordTile(
                 entry: e,
                 onDelete: () => widget.onDeleteEntry(e),
-                onToggleMastered: () => widget.onToggleMastered(e),
                 onMove: () => widget.onMoveEntry(e),
                 indent: true,
               )),
@@ -667,14 +653,12 @@ class _FolderGroupState extends State<_FolderGroup> {
 class _WordTile extends StatefulWidget {
   final NotebookEntry entry;
   final VoidCallback onDelete;
-  final VoidCallback onToggleMastered;
   final VoidCallback onMove;
   final bool indent;
 
   const _WordTile({
     required this.entry,
     required this.onDelete,
-    required this.onToggleMastered,
     required this.onMove,
     this.indent = false,
   });
@@ -685,24 +669,6 @@ class _WordTile extends StatefulWidget {
 
 class _WordTileState extends State<_WordTile> {
   bool _expanded = false;
-  late bool _mastered;
-
-  @override
-  void initState() {
-    super.initState();
-    _mastered = widget.entry.isMastered;
-  }
-
-  @override
-  void didUpdateWidget(_WordTile old) {
-    super.didUpdateWidget(old);
-    _mastered = widget.entry.isMastered;
-  }
-
-  void _handleToggle() {
-    setState(() => _mastered = !_mastered);
-    widget.onToggleMastered();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -723,71 +689,39 @@ class _WordTileState extends State<_WordTile> {
                     children: [
                       Text(
                         e.word,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: _mastered
-                              ? AppTheme.muted
-                              : AppTheme.onSurface,
-                          decoration: _mastered
-                              ? TextDecoration.lineThrough
-                              : null,
+                          color: AppTheme.onSurface,
                         ),
                       ),
                       if (e.translation.isNotEmpty)
                         Text(
                           e.translation,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 12,
-                            color: _mastered
-                                ? AppTheme.muted
-                                : AppTheme.primary,
+                            color: AppTheme.primary,
                           ),
                         ),
                     ],
                   ),
                 ),
-                // Mastered toggle
-                GestureDetector(
-                  onTap: _handleToggle,
-                  child: Padding(
-                    padding: const EdgeInsets.all(4),
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 200),
-                      child: _mastered
-                          ? const Icon(
-                              Icons.check_circle_rounded,
-                              key: ValueKey(true),
-                              size: 18,
-                              color: AppTheme.accent,
-                            )
-                          : const Icon(
-                              Icons.check_circle_outline_rounded,
-                              key: ValueKey(false),
-                              size: 18,
-                              color: AppTheme.muted,
-                            ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 2),
                 // Move
                 GestureDetector(
                   onTap: widget.onMove,
                   child: const Padding(
-                    padding: EdgeInsets.all(4),
+                    padding: EdgeInsets.all(6),
                     child: Icon(Icons.drive_file_move_rounded,
-                        size: 16, color: AppTheme.muted),
+                        size: 18, color: AppTheme.muted),
                   ),
                 ),
-                const SizedBox(width: 2),
                 // Delete
                 GestureDetector(
                   onTap: widget.onDelete,
                   child: const Padding(
-                    padding: EdgeInsets.all(4),
+                    padding: EdgeInsets.all(6),
                     child: Icon(Icons.delete_outline_rounded,
-                        size: 16, color: AppTheme.muted),
+                        size: 18, color: AppTheme.muted),
                   ),
                 ),
               ],

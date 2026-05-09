@@ -136,7 +136,7 @@ class _ProfScreenState extends State<ProfScreen> {
     final current = _profile.effectiveDiscussionLevel;
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.surface,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -203,7 +203,7 @@ class _ProfScreenState extends State<ProfScreen> {
                         decoration: BoxDecoration(
                           color: isSelected
                               ? AppTheme.primary
-                              : Colors.white,
+                              : AppTheme.surfaceHigh,
                           borderRadius: BorderRadius.circular(7),
                           border: Border.all(
                               color: isSelected
@@ -349,7 +349,7 @@ class _ProfScreenState extends State<ProfScreen> {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -378,9 +378,9 @@ class _ProfScreenState extends State<ProfScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.surface,
+      backgroundColor: AppTheme.bg,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.surface,
         surfaceTintColor: Colors.transparent,
         title: Row(
           children: [
@@ -401,7 +401,7 @@ class _ProfScreenState extends State<ProfScreen> {
               children: [
                 const Text('Discussion libre',
                     style:
-                        TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                        TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
                 Text(
                   'Parler, corriger, enregistrer des mots',
                   style: TextStyle(fontSize: 11, color: AppTheme.muted),
@@ -415,7 +415,7 @@ class _ProfScreenState extends State<ProfScreen> {
             onTap: _newDiscussion,
             child: Container(
               margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
                 color: AppTheme.primaryLight,
                 borderRadius: BorderRadius.circular(10),
@@ -430,7 +430,7 @@ class _ProfScreenState extends State<ProfScreen> {
             onTap: _showLevelPicker,
             child: Container(
               margin: const EdgeInsets.only(right: 16),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
                 color: AppTheme.primaryLight,
                 borderRadius: BorderRadius.circular(10),
@@ -475,7 +475,7 @@ class _ProfScreenState extends State<ProfScreen> {
           if (_initialized && _messages.length < 3)
             Container(
               height: 44,
-              color: Colors.white,
+              color: AppTheme.surface,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 padding:
@@ -552,7 +552,7 @@ class _ProfScreenState extends State<ProfScreen> {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 28),
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.surface,
         border: Border(top: BorderSide(color: AppTheme.border)),
       ),
       child: Column(
@@ -769,7 +769,7 @@ class _Bubble extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: isUser ? AppTheme.primary : Colors.white,
+              color: isUser ? AppTheme.primary : AppTheme.surfaceHigh,
               borderRadius: BorderRadius.only(
                 topLeft: const Radius.circular(18),
                 topRight: const Radius.circular(18),
@@ -929,7 +929,7 @@ class _Bubble extends StatelessWidget {
                   ],
                 ),
               ),
-              const Divider(height: 1, color: Color(0xFFD0E4FF)),
+              const Divider(height: 1, color: AppTheme.border),
               for (int i = 0; i < entries.length; i++)
                 _VocabRow(
                   entry: entries[i],
@@ -969,7 +969,7 @@ class _VocabRow extends StatelessWidget {
               ? null
               : const Border(
                   bottom: BorderSide(
-                      color: Color(0xFFD0E4FF), width: 0.5)),
+                      color: AppTheme.border, width: 0.5)),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1150,7 +1150,7 @@ class _SaveWordSheet extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
         decoration: BoxDecoration(
-          color: accent ? AppTheme.primary : Colors.white,
+          color: accent ? AppTheme.primary : AppTheme.surfaceHigh,
           border: Border.all(
               color: accent ? AppTheme.primary : AppTheme.border),
           borderRadius: BorderRadius.circular(12),
@@ -1217,7 +1217,7 @@ class _TypingIndicatorState extends State<_TypingIndicator>
         padding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppTheme.surfaceHigh,
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(18),
             topRight: Radius.circular(18),

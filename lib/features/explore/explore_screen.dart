@@ -146,12 +146,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.surface,
+      backgroundColor: AppTheme.bg,
       appBar: AppBar(
         title: Text(_selectedDomain != null
             ? (ContentService.domainMeta[_selectedDomain!]?['label'] ?? _selectedDomain!)
             : 'Apprendre'),
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.surface,
         surfaceTintColor: Colors.transparent,
         leading: _selectedDomain != null
             ? IconButton(
@@ -225,7 +225,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppTheme.surfaceHigh,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppTheme.border),
                 ),
@@ -301,7 +301,7 @@ class _LevelTile extends StatelessWidget {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.surfaceHigh,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: isOpen ? AppTheme.primary : AppTheme.border,
@@ -407,7 +407,7 @@ class _LevelTile extends StatelessWidget {
                                 decoration: BoxDecoration(
                                   color: isSelected
                                       ? AppTheme.primary
-                                      : Colors.white,
+                                      : AppTheme.surfaceHigh,
                                   borderRadius: BorderRadius.circular(7),
                                   border: Border.all(color: AppTheme.border),
                                 ),
@@ -479,7 +479,7 @@ class _GenerateCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.surfaceHigh,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: isRecording ? const Color(0xFFEF4444) : AppTheme.border,
@@ -643,7 +643,7 @@ class _GeneratedCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppTheme.surfaceHigh,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: isCompleted
@@ -677,7 +677,7 @@ class _GeneratedCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF0F4FF),
+                          color: AppTheme.primaryLight,
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: const Text(
@@ -780,7 +780,7 @@ class _LessonList extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: AppTheme.surfaceHigh,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: done

@@ -81,7 +81,7 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
     final current = _profile.effectiveQuizLevel;
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.surface,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -146,7 +146,7 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
                         width: 36,
                         height: 30,
                         decoration: BoxDecoration(
-                          color: isSelected ? AppTheme.primary : Colors.white,
+                          color: isSelected ? AppTheme.primary : AppTheme.surfaceHigh,
                           borderRadius: BorderRadius.circular(7),
                           border: Border.all(color: AppTheme.border),
                         ),
@@ -221,9 +221,9 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
   Widget build(BuildContext context) {
     final level = _profile.effectiveQuizLevel;
     return Scaffold(
-      backgroundColor: AppTheme.surface,
+      backgroundColor: AppTheme.bg,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.surface,
         surfaceTintColor: Colors.transparent,
         title: const Row(
           children: [
@@ -238,7 +238,7 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
             child: Container(
               margin: const EdgeInsets.only(right: 16),
               padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
                 color: AppTheme.primaryLight,
                 borderRadius: BorderRadius.circular(10),
@@ -360,7 +360,7 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
                       hintText: 'Ex: faire du shopping, parler de films…',
                       hintStyle: TextStyle(color: AppTheme.muted, fontSize: 14),
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: AppTheme.surfaceHigh,
                       contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 14),
                       border: OutlineInputBorder(
@@ -423,16 +423,9 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 7),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: AppTheme.surfaceHigh,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(color: AppTheme.border),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.04),
-                            blurRadius: 4,
-                            offset: const Offset(0, 1),
-                          ),
-                        ],
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -480,20 +473,13 @@ class _ThemeCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppTheme.surfaceHigh,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: hasPlayed
-                ? AppTheme.primary.withOpacity(0.3)
+                ? AppTheme.primary.withValues(alpha: 0.3)
                 : AppTheme.border,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
         ),
         padding: const EdgeInsets.all(14),
         child: Column(
@@ -508,7 +494,7 @@ class _ThemeCard extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: AppTheme.primary.withOpacity(0.1),
+                      color: AppTheme.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(

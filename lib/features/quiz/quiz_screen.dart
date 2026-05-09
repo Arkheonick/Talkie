@@ -193,7 +193,7 @@ class _QuizScreenState extends State<QuizScreen>
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.surface,
       leading: IconButton(
         icon: const Icon(Icons.close_rounded),
         onPressed: () async {
@@ -212,7 +212,7 @@ class _QuizScreenState extends State<QuizScreen>
             padding:
                 const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: AppTheme.primary.withOpacity(0.1),
+              color: AppTheme.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
@@ -358,7 +358,7 @@ class _QuizScreenState extends State<QuizScreen>
                     child: Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: AppTheme.surfaceHigh,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: AppTheme.border),
                       ),
@@ -447,7 +447,7 @@ class _QuizScreenState extends State<QuizScreen>
               padding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: AppTheme.primary.withOpacity(0.1),
+                color: AppTheme.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(24),
               ),
               child: Text(
@@ -617,23 +617,23 @@ class _OptionCard extends StatelessWidget {
     final isCorrect = index == correctIndex;
 
     Color borderColor = AppTheme.border;
-    Color bgColor = Colors.white;
+    Color bgColor = AppTheme.surfaceHigh;
     Color textColor = AppTheme.onSurface;
     Widget? trailing;
 
     if (answered) {
       if (isCorrect) {
-        borderColor = Colors.green.shade400;
-        bgColor = Colors.green.shade50;
-        textColor = Colors.green.shade800;
-        trailing = Icon(Icons.check_circle_rounded,
-            color: Colors.green.shade500, size: 20);
+        borderColor = const Color(0xFF34D399);
+        bgColor = const Color(0xFF064E3B);
+        textColor = const Color(0xFF6EE7B7);
+        trailing = const Icon(Icons.check_circle_rounded,
+            color: Color(0xFF34D399), size: 20);
       } else if (isSelected) {
-        borderColor = Colors.red.shade300;
-        bgColor = Colors.red.shade50;
-        textColor = Colors.red.shade700;
+        borderColor = const Color(0xFFF87171);
+        bgColor = const Color(0xFF450A0A);
+        textColor = const Color(0xFFFCA5A5);
         trailing =
-            Icon(Icons.cancel_rounded, color: Colors.red.shade400, size: 20);
+            const Icon(Icons.cancel_rounded, color: Color(0xFFF87171), size: 20);
       } else {
         borderColor = AppTheme.border;
         bgColor = AppTheme.surface;
@@ -661,9 +661,9 @@ class _OptionCard extends StatelessWidget {
                 color: answered && !isCorrect && !isSelected
                     ? AppTheme.surface
                     : answered && isCorrect
-                        ? Colors.green.shade100
+                        ? const Color(0xFF065F46)
                         : answered && isSelected
-                            ? Colors.red.shade100
+                            ? const Color(0xFF7F1D1D)
                             : AppTheme.primaryLight,
                 shape: BoxShape.circle,
               ),
@@ -676,9 +676,9 @@ class _OptionCard extends StatelessWidget {
                     color: answered && !isCorrect && !isSelected
                         ? AppTheme.muted
                         : answered && isCorrect
-                            ? Colors.green.shade700
+                            ? const Color(0xFF6EE7B7)
                             : answered && isSelected
-                                ? Colors.red.shade600
+                                ? const Color(0xFFFCA5A5)
                                 : AppTheme.primary,
                   ),
                 ),
