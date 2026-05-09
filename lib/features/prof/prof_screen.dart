@@ -8,7 +8,6 @@ import '../../services/audio_recorder_service.dart';
 import '../../services/gemini_service.dart';
 import '../../services/notebook_service.dart';
 import '../../services/tts_service.dart';
-import '../../services/discussion_history_service.dart';
 import '../../services/user_profile_service.dart';
 import '../../services/vocab_folder_service.dart';
 
@@ -30,7 +29,6 @@ class _ProfScreenState extends State<ProfScreen> {
   final _profileService = UserProfileService();
   final _notebookService = NotebookService();
   final _folderService = VocabFolderService();
-  final _historyService = DiscussionHistoryService();
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
   final _focusNode = FocusNode();
@@ -65,27 +63,10 @@ class _ProfScreenState extends State<ProfScreen> {
     await _profileService.init();
     await _notebookService.init();
     await _folderService.init();
-    await _historyService.init();
     _profile = _profileService.load();
     _gemini.init();
     await _tts.init();
-
-    final saved = _historyService.load();
-    if (saved.isNotEmpty) {
-      // Restore context into Gemini so Alex remembers the conversation
-      _gemini.restoreFreeConversation(
-        _profile.effectiveDiscussionLevel,
-        saved.length > 30 ? saved.sublist(saved.length - 30) : saved,
-      );
-      if (mounted) {
-        setState(() {
-          _messages.addAll(saved.map((m) => _Msg(m['role']!, m['text']!)));
-          _initialized = true;
-        });
-      }
-    } else {
-      await _startConversation(_profile.effectiveDiscussionLevel);
-    }
+    await _startConversation(_profile.effectiveDiscussionLevel);
   }
 
   Future<void> _startConversation(CefrLevel level) async {
@@ -131,7 +112,6 @@ class _ProfScreenState extends State<ProfScreen> {
       if (confirm != true) return;
     }
     await _tts.stop();
-    await _historyService.clear();
     _profile.discussionLevel = level;
     await _profileService.save(_profile);
     setState(() {
@@ -140,6 +120,16 @@ class _ProfScreenState extends State<ProfScreen> {
       _initialized = false;
     });
     await _startConversation(level);
+  }
+
+  Future<void> _newDiscussion() async {
+    await _tts.stop();
+    setState(() {
+      _messages.clear();
+      _isProcessing = false;
+      _initialized = false;
+    });
+    await _startConversation(_profile.effectiveDiscussionLevel);
   }
 
   void _showLevelPicker() {
@@ -265,9 +255,6 @@ class _ProfScreenState extends State<ProfScreen> {
 
   void _addMsg(String role, String text) {
     setState(() => _messages.add(_Msg(role, text)));
-    _historyService.save(
-      _messages.map((m) => {'role': m.role, 'text': m.text}).toList(),
-    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -424,6 +411,21 @@ class _ProfScreenState extends State<ProfScreen> {
           ],
         ),
         actions: [
+          GestureDetector(
+            onTap: _newDiscussion,
+            child: Container(
+              margin: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryLight,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                    color: AppTheme.primary.withValues(alpha: 0.3)),
+              ),
+              child: const Icon(Icons.add_comment_rounded,
+                  color: AppTheme.primary, size: 18),
+            ),
+          ),
           GestureDetector(
             onTap: _showLevelPicker,
             child: Container(
