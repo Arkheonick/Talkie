@@ -495,6 +495,62 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 }
 
+// ── Shared chip helpers ───────────────────────────────────────────────────────
+
+Widget _labelChip(String label, Color color,
+    {Color? bg, double fontSize = 11, double radius = 6}) {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+    decoration: BoxDecoration(
+      color: bg ?? color.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(radius),
+    ),
+    child: Text(
+      label,
+      style: TextStyle(
+          fontSize: fontSize, fontWeight: FontWeight.w600, color: color),
+    ),
+  );
+}
+
+Widget _durationChipWidget(String durationLabel,
+    {double iconSize = 11, double fontSize = 11, double radius = 6}) {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+    decoration: BoxDecoration(
+      color: AppTheme.muted.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(radius),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(PhosphorIcons.clock(), size: iconSize, color: AppTheme.muted),
+        const SizedBox(width: 3),
+        Text(durationLabel,
+            style: TextStyle(
+                fontSize: fontSize,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.muted)),
+      ],
+    ),
+  );
+}
+
+Widget _completedChipWidget({double iconSize = 11, double radius = 6}) {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+    decoration: BoxDecoration(
+      color: AppTheme.accentLight,
+      borderRadius: BorderRadius.circular(radius),
+    ),
+    child: Icon(
+      PhosphorIcons.checkCircle(PhosphorIconsStyle.fill),
+      size: iconSize,
+      color: AppTheme.accent,
+    ),
+  );
+}
+
 // ── Level tile (dropdown body) ────────────────────────────────────────────────
 
 class _LevelTile extends StatelessWidget {
@@ -974,9 +1030,12 @@ class _GeneratedCard extends StatelessWidget {
                   Wrap(
                     spacing: 6,
                     children: [
-                      _chip(lesson.level.code, AppTheme.primary),
-                      _durationChip(lesson.durationLabel),
-                      if (isCompleted) _completedChip(),
+                      _labelChip(lesson.level.code, AppTheme.primary,
+                          fontSize: 10, radius: 5),
+                      _durationChipWidget(lesson.durationLabel,
+                          iconSize: 10, fontSize: 10, radius: 5),
+                      if (isCompleted)
+                        _completedChipWidget(iconSize: 10, radius: 5),
                     ],
                   ),
                 ],
@@ -1007,53 +1066,6 @@ class _GeneratedCard extends StatelessWidget {
     );
   }
 
-  Widget _chip(String label, Color color, {Color? bg}) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        decoration: BoxDecoration(
-          color: bg ?? color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(5),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-              fontSize: 10, fontWeight: FontWeight.w600, color: color),
-        ),
-      );
-
-  Widget _durationChip(String durationLabel) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        decoration: BoxDecoration(
-          color: AppTheme.muted.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(5),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(PhosphorIcons.clock(), size: 10, color: AppTheme.muted),
-            const SizedBox(width: 3),
-            Text(
-              durationLabel,
-              style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.muted),
-            ),
-          ],
-        ),
-      );
-
-  Widget _completedChip() => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        decoration: BoxDecoration(
-          color: const Color(0xFFD1FAE5),
-          borderRadius: BorderRadius.circular(5),
-        ),
-        child: Icon(
-          PhosphorIcons.checkCircle(PhosphorIconsStyle.fill),
-          size: 10,
-          color: AppTheme.accent,
-        ),
-      );
 }
 
 // ── Lesson list (domain drill-down) ──────────────────────────────────────────
@@ -1121,9 +1133,9 @@ class _LessonList extends StatelessWidget {
                             Wrap(
                               spacing: 6,
                               children: [
-                                _chip(l.level.code, AppTheme.primary),
-                                _durationChip(l.durationLabel),
-                                if (done) _completedChip(),
+                                _labelChip(l.level.code, AppTheme.primary),
+                                _durationChipWidget(l.durationLabel),
+                                if (done) _completedChipWidget(),
                               ],
                             ),
                           ],
@@ -1142,51 +1154,4 @@ class _LessonList extends StatelessWidget {
           );
   }
 
-  Widget _chip(String label, Color color, {Color? bg}) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-        decoration: BoxDecoration(
-          color: bg ?? color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-              fontSize: 11, fontWeight: FontWeight.w600, color: color),
-        ),
-      );
-
-  Widget _durationChip(String durationLabel) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-        decoration: BoxDecoration(
-          color: AppTheme.muted.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(PhosphorIcons.clock(), size: 11, color: AppTheme.muted),
-            const SizedBox(width: 3),
-            Text(
-              durationLabel,
-              style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.muted),
-            ),
-          ],
-        ),
-      );
-
-  Widget _completedChip() => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-        decoration: BoxDecoration(
-          color: const Color(0xFFD1FAE5),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Icon(
-          PhosphorIcons.checkCircle(PhosphorIconsStyle.fill),
-          size: 11,
-          color: AppTheme.accent,
-        ),
-      );
 }

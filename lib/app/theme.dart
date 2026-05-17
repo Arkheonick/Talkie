@@ -14,6 +14,7 @@ class AppTheme {
   static const Color primary     = Color(0xFF818CF8); // indigo-400
   static const Color primaryLight= Color(0x1A818CF8); // indigo 10%
   static const Color accent      = Color(0xFF34D399); // emerald
+  static const Color accentLight = Color(0xFFD1FAE5); // emerald-100
 
   // ── Per-theme accent colors (cards, icons) ────────────────────────────────
   static const Color themeQuotidien = Color(0xFFF59E0B); // amber
