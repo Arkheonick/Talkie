@@ -395,19 +395,16 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
                 const SizedBox(width: 10),
                 ValueListenableBuilder<TextEditingValue>(
                   valueListenable: _customController,
-                  builder: (_, value, __) => AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    child: ElevatedButton(
-                      onPressed:
-                          value.text.trim().isEmpty ? null : _startCustomQuiz,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 15),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: const Text('Lancer'),
+                  builder: (_, value, __) => ElevatedButton(
+                    onPressed:
+                        value.text.trim().isEmpty ? null : _startCustomQuiz,
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 15),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
                     ),
+                    child: const Text('Lancer'),
                   ),
                 ),
               ],
