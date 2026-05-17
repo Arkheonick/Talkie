@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../app/theme.dart';
 import '../../models/notebook_entry.dart';
 import '../../models/vocab_folder.dart';
@@ -233,7 +234,7 @@ class _LexiqueScreenState extends State<LexiqueScreen> {
                 MaterialPageRoute(
                     builder: (_) => FlashcardScreen(entries: toLearn)),
               ).then((_) => _load()),
-              icon: const Icon(Icons.style_rounded, size: 16),
+              icon: Icon(PhosphorIcons.stack(), size: 16),
               label: const Text('Flashcards'),
               style: TextButton.styleFrom(foregroundColor: AppTheme.primary),
             ),
@@ -294,12 +295,12 @@ class _LexiqueScreenState extends State<LexiqueScreen> {
         decoration: InputDecoration(
           hintText: 'Rechercher un mot…',
           hintStyle: TextStyle(color: AppTheme.muted, fontSize: 14),
-          prefixIcon: const Icon(Icons.search_rounded,
+          prefixIcon: Icon(PhosphorIcons.magnifyingGlass(),
               size: 20, color: AppTheme.muted),
           suffixIcon: _searchQuery.isNotEmpty
               ? GestureDetector(
                   onTap: () => _searchController.clear(),
-                  child: const Icon(Icons.close_rounded,
+                  child: Icon(PhosphorIcons.x(),
                       size: 18, color: AppTheme.muted),
                 )
               : null,
@@ -337,7 +338,7 @@ class _LexiqueScreenState extends State<LexiqueScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text('🔍', style: TextStyle(fontSize: 36)),
+            Icon(PhosphorIcons.magnifyingGlass(), size: 36, color: AppTheme.muted),
             const SizedBox(height: 12),
             Text(
               'Aucun résultat pour « $_searchQuery »',
@@ -386,19 +387,19 @@ class _LexiqueScreenState extends State<LexiqueScreen> {
   }
 
   Widget _empty() {
-    return const Center(
+    return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text('📖', style: TextStyle(fontSize: 48)),
-          SizedBox(height: 16),
-          Text('Ton lexique est vide',
+          Icon(PhosphorIcons.bookOpen(), size: 48, color: AppTheme.muted),
+          const SizedBox(height: 16),
+          const Text('Ton lexique est vide',
               style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
                   color: AppTheme.onSurface)),
-          SizedBox(height: 8),
-          Text(
+          const SizedBox(height: 8),
+          const Text(
             'Sauvegarde des mots depuis les leçons\nou le chat pour les retrouver ici.',
             textAlign: TextAlign.center,
             style: TextStyle(
@@ -444,6 +445,22 @@ class _LessonGroup extends StatefulWidget {
 class _LessonGroupState extends State<_LessonGroup> {
   bool _expanded = true;
 
+  static Color _groupColor(String lessonId) {
+    final domain = lessonId.split('_').first;
+    switch (domain) {
+      case 'travel':     return const Color(0xFF38BDF8); // AppTheme.themeVoyage
+      case 'work':       return const Color(0xFFA78BFA); // AppTheme.themeTravail
+      case 'daily':      return const Color(0xFFF59E0B); // AppTheme.themeQuotidien
+      case 'sport':      return const Color(0xFF22C55E); // AppTheme.themeSport
+      case 'culture':    return const Color(0xFFF472B6); // AppTheme.themeCulture
+      case 'tech':       return const Color(0xFF2DD4BF); // AppTheme.themeTech
+      case 'health':     return const Color(0xFFF87171); // AppTheme.themeSante
+      case 'social':     return const Color(0xFFFB923C); // AppTheme.themeSocial
+      case 'discussion': return const Color(0xFF818CF8); // AppTheme.primary
+      default:           return const Color(0xFF94A3B8); // AppTheme.muted
+    }
+  }
+
   List<NotebookEntry> _entriesInFolder(String? folderId) => widget.entries
       .where((e) => e.folderId == folderId)
       .toList();
@@ -477,8 +494,16 @@ class _LessonGroupState extends State<_LessonGroup> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.folder_special_rounded,
-                      size: 18, color: AppTheme.primary),
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _groupColor(widget.lessonId),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(PhosphorIcons.bookOpen(), size: 18, color: AppTheme.primary),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -493,26 +518,26 @@ class _LessonGroupState extends State<_LessonGroup> {
                   // Rename dialogue
                   GestureDetector(
                     onTap: widget.onRename,
-                    child: const Padding(
-                      padding: EdgeInsets.all(4),
-                      child: Icon(Icons.edit_outlined,
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Icon(PhosphorIcons.pencilSimple(),
                           size: 16, color: AppTheme.primary),
                     ),
                   ),
                   // Add folder
                   GestureDetector(
                     onTap: widget.onCreateFolder,
-                    child: const Padding(
-                      padding: EdgeInsets.all(4),
-                      child: Icon(Icons.create_new_folder_outlined,
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Icon(PhosphorIcons.folderPlus(),
                           size: 16, color: AppTheme.primary),
                     ),
                   ),
                   const SizedBox(width: 4),
                   Icon(
                     _expanded
-                        ? Icons.keyboard_arrow_up_rounded
-                        : Icons.keyboard_arrow_down_rounded,
+                        ? PhosphorIcons.caretUp()
+                        : PhosphorIcons.caretDown(),
                     color: AppTheme.primary,
                     size: 18,
                   ),
@@ -600,8 +625,8 @@ class _FolderGroupState extends State<_FolderGroup> {
               children: [
                 Icon(
                   _expanded
-                      ? Icons.folder_open_rounded
-                      : Icons.folder_rounded,
+                      ? PhosphorIcons.folderOpen()
+                      : PhosphorIcons.folder(),
                   size: 16,
                   color: AppTheme.muted,
                 ),
@@ -618,17 +643,17 @@ class _FolderGroupState extends State<_FolderGroup> {
                 ),
                 GestureDetector(
                   onTap: widget.onRename,
-                  child: const Padding(
-                    padding: EdgeInsets.all(4),
-                    child: Icon(Icons.edit_outlined,
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Icon(PhosphorIcons.pencilSimple(),
                         size: 14, color: AppTheme.muted),
                   ),
                 ),
                 GestureDetector(
                   onTap: widget.onDelete,
-                  child: const Padding(
-                    padding: EdgeInsets.all(4),
-                    child: Icon(Icons.delete_outline_rounded,
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Icon(PhosphorIcons.trash(),
                         size: 14, color: AppTheme.muted),
                   ),
                 ),
@@ -709,18 +734,18 @@ class _WordTileState extends State<_WordTile> {
                 // Move
                 GestureDetector(
                   onTap: widget.onMove,
-                  child: const Padding(
-                    padding: EdgeInsets.all(6),
-                    child: Icon(Icons.drive_file_move_rounded,
+                  child: Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: Icon(PhosphorIcons.arrowBendUpRight(),
                         size: 18, color: AppTheme.muted),
                   ),
                 ),
                 // Delete
                 GestureDetector(
                   onTap: widget.onDelete,
-                  child: const Padding(
-                    padding: EdgeInsets.all(6),
-                    child: Icon(Icons.delete_outline_rounded,
+                  child: Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: Icon(PhosphorIcons.trash(),
                         size: 18, color: AppTheme.muted),
                   ),
                 ),
@@ -742,7 +767,7 @@ class _WordTileState extends State<_WordTile> {
                           height: 1.4)),
                 if (e.exampleSentence.isNotEmpty) ...[
                   const SizedBox(height: 4),
-                  Text('💬 ${e.exampleSentence}',
+                  Text(e.exampleSentence,
                       style: const TextStyle(
                           fontSize: 11,
                           color: AppTheme.muted,
@@ -782,10 +807,10 @@ class _MoveFolderSheet extends StatelessWidget {
                   color: AppTheme.onSurface)),
           const SizedBox(height: 12),
           if (currentFolderId != null)
-            _option(context, Icons.bookmark_border_rounded, 'Sans dossier', ''),
+            _option(context, PhosphorIcons.bookmarkSimple(), 'Sans dossier', ''),
           ...folders
               .where((f) => f.id != currentFolderId)
-              .map((f) => _option(context, Icons.folder_rounded, f.name, f.id)),
+              .map((f) => _option(context, PhosphorIcons.folder(), f.name, f.id)),
           const SizedBox(height: 4),
           TextButton(
             onPressed: () => Navigator.pop(context, 'cancel'),
