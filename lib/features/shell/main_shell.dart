@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../app/theme.dart';
 import '../../utils/app_audio.dart';
 import '../explore/explore_screen.dart';
@@ -25,11 +26,27 @@ class _MainShellState extends State<MainShell> {
   // from adding transit pages (e.g. Discussion) to _visited mid-animation.
   bool _isProgrammaticNav = false;
 
-  static const _tabs = [
-    _TabItem(icon: Icons.explore_outlined,             activeIcon: Icons.explore_rounded,             label: 'Apprendre'),
-    _TabItem(icon: Icons.quiz_outlined,                activeIcon: Icons.quiz_rounded,                label: 'Quiz'),
-    _TabItem(icon: Icons.chat_bubble_outline_rounded,  activeIcon: Icons.chat_bubble_rounded,         label: 'Discussion'),
-    _TabItem(icon: Icons.menu_book_outlined,           activeIcon: Icons.menu_book_rounded,           label: 'Lexique'),
+  static final _tabs = [
+    _TabItem(
+      icon: PhosphorIcons.bookOpen(),
+      activeIcon: PhosphorIcons.bookOpen(PhosphorIconsStyle.fill),
+      label: 'Apprendre',
+    ),
+    _TabItem(
+      icon: PhosphorIcons.brain(),
+      activeIcon: PhosphorIcons.brain(PhosphorIconsStyle.fill),
+      label: 'Quiz',
+    ),
+    _TabItem(
+      icon: PhosphorIcons.microphone(),
+      activeIcon: PhosphorIcons.microphone(PhosphorIconsStyle.fill),
+      label: 'Discussion',
+    ),
+    _TabItem(
+      icon: PhosphorIcons.notePencil(),
+      activeIcon: PhosphorIcons.notePencil(PhosphorIconsStyle.fill),
+      label: 'Lexique',
+    ),
   ];
 
   @override
@@ -127,7 +144,7 @@ class _TabItem {
   final IconData icon;
   final IconData activeIcon;
   final String label;
-  const _TabItem({required this.icon, required this.activeIcon, required this.label});
+  _TabItem({required this.icon, required this.activeIcon, required this.label});
 }
 
 // Wraps a page in AutomaticKeepAliveClientMixin so PageView keeps its state
