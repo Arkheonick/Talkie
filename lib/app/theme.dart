@@ -7,6 +7,7 @@ class AppTheme {
   static const Color bg          = Color(0xFF0F172A); // slate-900
   static const Color surface     = Color(0xFF1E293B); // slate-800
   static const Color surfaceHigh = Color(0xFF273549); // card elevated
+  static const Color surfaceTop  = Color(0xFF2F3F55); // couche 3 — éléments actifs
   static const Color border      = Color(0x1FFFFFFF); // white 12%
   static const Color onSurface   = Color(0xFFF1F5F9); // slate-100
   static const Color muted       = Color(0xFF94A3B8); // slate-400
