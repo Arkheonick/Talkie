@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../app/theme.dart';
 import '../../models/cefr_level.dart';
 import '../../models/quiz_result.dart';
@@ -7,6 +8,8 @@ import '../../models/quiz_theme.dart';
 import '../../models/user_profile.dart';
 import '../../services/quiz_result_service.dart';
 import '../../services/user_profile_service.dart';
+import '../../widgets/display_header.dart';
+import '../../widgets/theme_card.dart';
 import 'quiz_screen.dart';
 
 class QuizSetupScreen extends StatefulWidget {
@@ -176,7 +179,7 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
                       ),
                       if (isSelected) ...[
                         const Spacer(),
-                        Icon(Icons.check_rounded,
+                        Icon(PhosphorIcons.check(),
                             color: AppTheme.primary, size: 18),
                       ],
                     ],
@@ -217,89 +220,92 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
     _startQuiz(theme);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final level = _profile.effectiveQuizLevel;
-    return Scaffold(
-      backgroundColor: AppTheme.bg,
-      appBar: AppBar(
-        backgroundColor: AppTheme.surface,
-        surfaceTintColor: Colors.transparent,
-        title: const Row(
-          children: [
-            Text('🧠', style: TextStyle(fontSize: 20)),
-            SizedBox(width: 8),
-            Text('Quiz'),
-          ],
+  static Color _themeColor(String id) {
+    switch (id) {
+      case 'travel':  return AppTheme.themeVoyage;
+      case 'work':    return AppTheme.themeTravail;
+      case 'daily':   return AppTheme.themeQuotidien;
+      case 'sport':   return AppTheme.themeSport;
+      case 'culture': return AppTheme.themeCulture;
+      case 'tech':    return AppTheme.themeTech;
+      case 'health':  return AppTheme.themeSante;
+      case 'social':  return AppTheme.themeSocial;
+      default:        return AppTheme.primary;
+    }
+  }
+
+  Widget _buildLevelChip() {
+    return GestureDetector(
+      onTap: _showLevelPicker,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppTheme.primaryLight,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppTheme.primary.withValues(alpha: 0.35)),
         ),
-        actions: [
-          GestureDetector(
-            onTap: _showLevelPicker,
-            child: Container(
-              margin: const EdgeInsets.only(right: 16),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryLight,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                    color: AppTheme.primary.withValues(alpha: 0.3)),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Mon niveau',
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.primary,
-                    ),
-                  ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        level.code,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                          color: AppTheme.primary,
-                        ),
-                      ),
-                      const Icon(Icons.arrow_drop_down_rounded,
-                          size: 14, color: AppTheme.primary),
-                    ],
-                  ),
-                ],
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _profile.effectiveQuizLevel.code,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.primary,
               ),
             ),
-          ),
-        ],
+            const SizedBox(width: 4),
+            Icon(PhosphorIcons.caretDown(), color: AppTheme.primary, size: 14),
+          ],
+        ),
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppTheme.bg,
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : CustomScrollView(
               slivers: [
+                SliverToBoxAdapter(
+                  child: SafeArea(
+                    child: DisplayHeader(
+                      greeting: 'Entraîne-toi',
+                      title: 'Quiz.',
+                      subtitle: 'Teste ton vocabulaire sur le thème de ton choix',
+                      actions: [
+                        const SizedBox(width: 12),
+                        _buildLevelChip(),
+                      ],
+                    ),
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 20)),
                 _buildCustomSection(),
                 _buildSuggestedTitle(),
                 _buildThemeGrid(),
-                const SliverToBoxAdapter(child: SizedBox(height: 32)),
+                const SliverToBoxAdapter(child: SizedBox(height: 40)),
               ],
             ),
     );
   }
 
   Widget _buildSuggestedTitle() {
-    return SliverToBoxAdapter(
+    return const SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+        padding: EdgeInsets.fromLTRB(20, 24, 20, 8),
         child: Text(
-          'Thèmes suggérés',
-          style: Theme.of(context)
-              .textTheme
-              .titleLarge
-              ?.copyWith(fontWeight: FontWeight.w600),
+          'THÈMES SUGGÉRÉS',
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            color: AppTheme.muted,
+            letterSpacing: 0.12,
+          ),
         ),
       ),
     );
@@ -313,9 +319,12 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
           (_, i) {
             final theme = QuizTheme.suggested[i];
             final best = _bestResults[theme.id];
-            return _ThemeCard(
-              theme: theme,
-              best: best,
+            return ThemeCard(
+              themeId: theme.id,
+              label: theme.label,
+              color: _themeColor(theme.id),
+              scoreBadge: best != null ? 'T${best.bestTier}' : null,
+              subLabel: best != null ? '${best.lastScore}/10' : 'Nouveau',
               onTap: () => _startQuiz(theme),
             );
           },
@@ -325,7 +334,7 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
           crossAxisCount: 2,
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
-          childAspectRatio: 1.3,
+          childAspectRatio: 1.15,
         ),
       ),
     );
@@ -334,18 +343,20 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
   Widget _buildCustomSection() {
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Je choisis mon thème',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w600),
+            const Text(
+              'JE CHOISIS MON THÈME',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.muted,
+                letterSpacing: 0.12,
+              ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
             Text(
               'Un thème, une situation, un vocabulaire spécifique…',
               style: TextStyle(fontSize: 13, color: AppTheme.muted),
@@ -430,8 +441,7 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(theme.emoji,
-                              style: const TextStyle(fontSize: 13)),
+                          Icon(PhosphorIcons.target(), size: 13, color: AppTheme.muted),
                           const SizedBox(width: 6),
                           Text(
                             theme.label,
@@ -448,109 +458,6 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
                 }).toList(),
               ),
             ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ThemeCard extends StatelessWidget {
-  final QuizTheme theme;
-  final QuizResult? best;
-  final VoidCallback onTap;
-
-  const _ThemeCard({
-    required this.theme,
-    required this.best,
-    required this.onTap,
-  });
-
-  static Color _themeColor(String id) {
-    switch (id) {
-      case 'travel':   return AppTheme.themeVoyage;
-      case 'work':     return AppTheme.themeTravail;
-      case 'daily':    return AppTheme.themeQuotidien;
-      case 'sport':    return AppTheme.themeSport;
-      case 'culture':  return AppTheme.themeCulture;
-      case 'tech':     return AppTheme.themeTech;
-      case 'health':   return AppTheme.themeSante;
-      case 'social':   return AppTheme.themeSocial;
-      default:         return AppTheme.primary;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final hasPlayed = best != null;
-    final color = _themeColor(theme.id);
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              color.withValues(alpha: 0.22),
-              color.withValues(alpha: 0.06),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: hasPlayed
-                ? color.withValues(alpha: 0.55)
-                : color.withValues(alpha: 0.3),
-            width: 1.5,
-          ),
-        ),
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(theme.emoji, style: const TextStyle(fontSize: 26)),
-                const Spacer(),
-                if (hasPlayed)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 7, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      'T${best!.bestTier}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: color,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const Spacer(),
-            Text(
-              theme.label,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: AppTheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 2),
-            if (hasPlayed)
-              Text(
-                '${best!.lastScore}/10',
-                style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600),
-              )
-            else
-              Text(
-                'Nouveau',
-                style: TextStyle(fontSize: 11, color: color.withValues(alpha: 0.7)),
-              ),
           ],
         ),
       ),
