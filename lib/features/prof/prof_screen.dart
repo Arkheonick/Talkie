@@ -692,7 +692,7 @@ class _ProfScreenState extends State<ProfScreen> {
               _ControlBtn(
                 icon: PhosphorIcons.bookmarkSimple(),
                 label: 'Sauvegarder',
-                onTap: _saveWord,
+                onTap: () => _saveWord(word: _textController.text.trim()),
               ),
             ],
           ),
