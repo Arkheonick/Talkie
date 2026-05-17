@@ -40,12 +40,46 @@ lib/
 - **Android TTS** : `flutter_tts` package Flutter
 - **PDF** : package `pdf` + `printing` pour export
 
+## Design System — Source de vérité absolue
+
+Tout travail UI/UX DOIT commencer par lire `docs/DESIGN_SYSTEM.md`.
+Tout travail sur les flows et l'architecture DOIT lire `docs/UX_FLOWS.md`.
+Les références visuelles sont dans `references/REFERENCES.md`.
+
+**Ces fichiers font autorité sur toute autre convention.**
+
+### Règles design non-négociables
+
+- **Dark theme uniquement** — tokens `AppTheme.*` exclusivement, jamais `Colors.white`
+- **No emoji dans l'UI** — Phosphor Icons (`phosphor_flutter`) + SVG illustrations
+- **withValues(alpha:) uniquement** — `withOpacity()` est interdit (deprecated)
+- **Spectre éditorial** — les screens d'entrée penchent vers Editorial Bold (A),
+  les screens de contenu vers Structured Vibrant (C)
+- **Orbe vocale** — l'écran Discussion a une orbe animée comme élément signature
+- **Typo display** — les gros titres utilisent Sora 800+ avec letter-spacing négatif
+- **Couleurs par thème** — chaque thème a sa couleur identitaire (voir AppTheme)
+
+### Avant TOUTE tâche UI
+
+1. Charger la skill `frontend-design:frontend-design`
+2. Lire `docs/DESIGN_SYSTEM.md` section pertinente
+3. Valider que le composant respecte les 15 contraintes négatives du design system
+
+### Packages design requis
+
+```yaml
+phosphor_flutter: ^2.0.0    # Icons (remplace emojis UI)
+flutter_svg: ^2.0.0         # Illustrations SVG par thème
+lottie: ^3.0.0              # Animations orbe + célébrations
+```
+
 ## Core UX Principles
-- Interface **light theme** par défaut, moderne et user-friendly
-- Dialogue vocal = flux principal — le micro doit être accessible en 1 tap
-- Affichage progressif : vocab + phrases + traductions s'accumulent au fil de la session
+
+- **Voice-first** — Le micro est accessible en 1 tap depuis n'importe où
+- **Dialogue vocal = flux principal** — L'orbe Discussion est le CTA hero de l'écran Apprendre
+- **Progressive disclosure** — Jamais plus de 2 niveaux de hiérarchie simultanés
+- **Feedback immédiat** — Chaque interaction produit un retour visuel < 100ms
 - PDF exporté : structuré, esthétique, lisible — titre, sections vocab, phrases, traductions
-- Pas de latence perceptible entre la réponse vocale et l'affichage texte
 
 ## Pedagogy — Comportement du Professeur IA
 - Corrige les erreurs de l'utilisateur (prononciation, grammaire, vocabulaire)

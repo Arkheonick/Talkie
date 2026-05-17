@@ -35,3 +35,4 @@ build/symbols/
 
 # macOS
 .DS_Store
+.superpowers/
