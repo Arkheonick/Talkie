@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../app/theme.dart';
 import '../../models/cefr_level.dart';
 import '../../models/lesson.dart';
@@ -9,10 +11,14 @@ import '../../services/content_service.dart';
 import '../../services/gemini_service.dart';
 import '../../services/generated_lesson_service.dart';
 import '../../services/user_profile_service.dart';
+import '../../widgets/display_header.dart';
+import '../../widgets/theme_card.dart';
 import '../lesson/lesson_screen.dart';
 
 class ExploreScreen extends StatefulWidget {
-  const ExploreScreen({super.key});
+  final VoidCallback? onOpenDiscussion;
+
+  const ExploreScreen({super.key, this.onOpenDiscussion});
 
   @override
   State<ExploreScreen> createState() => _ExploreScreenState();
@@ -157,153 +163,339 @@ class _ExploreScreenState extends State<ExploreScreen> {
     setState(() => _generatedLessons = _generatedService.loadAll());
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.bg,
-      appBar: AppBar(
-        title: Text(_selectedDomain != null
-            ? (ContentService.domainMeta[_selectedDomain!]?['label'] ?? _selectedDomain!)
-            : 'Apprendre'),
-        backgroundColor: AppTheme.surface,
-        surfaceTintColor: Colors.transparent,
-        leading: _selectedDomain != null
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back_rounded),
-                onPressed: () => setState(() => _selectedDomain = null),
-              )
-            : null,
+  // ── Level badge button shown in header actions ─────────────────────────────
+  Widget _buildLevelButton() {
+    return GestureDetector(
+      onTap: () => setState(() => _levelOpen = !_levelOpen),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: _levelOpen ? AppTheme.primary : AppTheme.primaryLight,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: _levelOpen
+                ? AppTheme.primary
+                : AppTheme.primary.withValues(alpha: 0.35),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _profile.level.code,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: _levelOpen ? Colors.white : AppTheme.primary,
+              ),
+            ),
+            const SizedBox(width: 4),
+            AnimatedRotation(
+              turns: _levelOpen ? 0.5 : 0,
+              duration: const Duration(milliseconds: 200),
+              child: Icon(
+                PhosphorIcons.caretDown(),
+                color: _levelOpen ? Colors.white : AppTheme.primary,
+                size: 14,
+              ),
+            ),
+          ],
+        ),
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _selectedDomain != null
-              ? _LessonList(
-                  domain: _selectedDomain!,
-                  lessons: _contentService.getByDomain(_selectedDomain!),
-                  profile: _profile,
-                  onLessonTap: _openLesson,
-                )
-              : _buildMainView(),
     );
   }
 
-  Widget _buildMainView() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        // ── 1. Sélecteur de niveau ─────────────────────────────────────
-        _LevelTile(
-          profile: _profile,
-          isOpen: _levelOpen,
-          onToggle: () => setState(() => _levelOpen = !_levelOpen),
-          onSelect: _selectLevel,
-        ),
-        const SizedBox(height: 14),
-
-        // ── 2. Génère un dialogue ──────────────────────────────────────
-        _SectionLabel(
-          title: 'Génère un dialogue',
-          subtitle:
-              'Décris une situation en français ou en anglais.\nEx : "un médecin et un patient, consultation pour une douleur au dos à Paris"',
-        ),
-        const SizedBox(height: 10),
-        _GenerateCard(
-          controller: _textController,
-          isGenerating: _isGenerating,
-          isRecording: _isRecording,
-          isTranscribing: _isTranscribing,
-          onToggleRecording: _toggleRecording,
-          onGenerate: _generate,
-        ),
-        const SizedBox(height: 24),
-
-        // ── 3. Thème ───────────────────────────────────────────────────
-        const _SectionLabel(title: 'Thème'),
-        const SizedBox(height: 10),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: 1.25,
+  // ── Discussion CTA card with mini-orb ──────────────────────────────────────
+  Widget _buildDiscussionCta() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: GestureDetector(
+        onTap: widget.onOpenDiscussion,
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF1E1B4B), Color(0xFF312E81), Color(0xFF1E1B4B)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: AppTheme.primary.withValues(alpha: 0.35),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.primary.withValues(alpha: 0.12),
+                blurRadius: 20,
+                offset: const Offset(0, 6),
+              ),
+            ],
           ),
-          itemCount: _contentService.domains.length,
-          itemBuilder: (_, i) {
-            final domain = _contentService.domains[i];
-            final meta = ContentService.domainMeta[domain] ??
-                {'label': domain, 'emoji': '📖'};
-            final color = _domainColor(domain);
-            return GestureDetector(
-              onTap: () => setState(() => _selectedDomain = domain),
-              child: Container(
+          child: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    center: const Alignment(-0.3, -0.3),
                     colors: [
-                      color.withValues(alpha: 0.22),
-                      color.withValues(alpha: 0.06),
+                      AppTheme.primary.withValues(alpha: 0.70),
+                      AppTheme.primary.withValues(alpha: 0.25),
+                      Colors.transparent,
                     ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+                    stops: const [0.0, 0.5, 1.0],
                   ),
-                  borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                      color: color.withValues(alpha: 0.4), width: 1.5),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(meta['emoji']!,
-                          style: const TextStyle(fontSize: 30)),
-                      const Spacer(),
-                      Text(
-                        meta['label']!,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                          color: AppTheme.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Explorer →',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: color,
-                        ),
-                      ),
-                    ],
+                    color: AppTheme.primary.withValues(alpha: 0.45),
+                    width: 1.5,
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.primary.withValues(alpha: 0.22),
+                      blurRadius: 16,
+                      spreadRadius: 1,
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  PhosphorIcons.microphone(PhosphorIconsStyle.fill),
+                  color: Colors.white.withValues(alpha: 0.88),
+                  size: 22,
                 ),
               ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'DISCUSSION',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.primary,
+                        letterSpacing: 0.10,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Parler avec ton prof',
+                      style: GoogleFonts.sora(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFFE0E7FF),
+                        letterSpacing: -0.4,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Démarre maintenant →',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.primary.withValues(alpha: 0.65),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Section label ──────────────────────────────────────────────────────────
+  Widget _buildSectionLabel(String label) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Text(
+        label.toUpperCase(),
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          color: AppTheme.muted,
+          letterSpacing: 0.12,
+        ),
+      ),
+    );
+  }
+
+  // ── Theme grid — returns a Sliver ──────────────────────────────────────────
+  Widget _buildThemeGrid() {
+    final domains = _contentService.domains;
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      sliver: SliverGrid(
+        delegate: SliverChildBuilderDelegate(
+          (context, i) {
+            final domain = domains[i];
+            final label =
+                ContentService.domainMeta[domain]?['label'] ?? domain;
+            return ThemeCard(
+              themeId: domain,
+              label: label,
+              color: _domainColor(domain),
+              onTap: () => setState(() => _selectedDomain = domain),
             );
           },
+          childCount: domains.length,
         ),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          childAspectRatio: 1.15,
+        ),
+      ),
+    );
+  }
 
-        // ── 4. Dialogues générés ───────────────────────────────────────
-        if (_generatedLessons.isNotEmpty) ...[
-          const SizedBox(height: 24),
-          const _SectionLabel(title: 'Mes dialogues'),
+  // ── Generate section — non-sliver, wrapped by caller ──────────────────────
+  Widget _buildGenerateSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'GÉNÈRE UN DIALOGUE',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: AppTheme.muted,
+              letterSpacing: 0.12,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Décris une situation en français ou en anglais.',
+            style: TextStyle(fontSize: 13, color: AppTheme.muted, height: 1.5),
+          ),
           const SizedBox(height: 10),
-          ..._generatedLessons.map((l) => _GeneratedCard(
+          _GenerateCard(
+            controller: _textController,
+            isGenerating: _isGenerating,
+            isRecording: _isRecording,
+            isTranscribing: _isTranscribing,
+            onToggleRecording: _toggleRecording,
+            onGenerate: _generate,
+          ),
+          if (_generatedLessons.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            const Text(
+              'MES DIALOGUES',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.muted,
+                letterSpacing: 0.12,
+              ),
+            ),
+            const SizedBox(height: 10),
+            ..._generatedLessons.map(
+              (l) => _GeneratedCard(
                 lesson: l,
                 isCompleted: _profile.completedLessonIds.contains(l.id),
                 onTap: () => _openLesson(l),
                 onDelete: () => _deleteGenerated(l.id),
-              )),
+              ),
+            ),
+          ],
         ],
+      ),
+    );
+  }
 
-        const SizedBox(height: 24),
-      ],
+  @override
+  Widget build(BuildContext context) {
+    // ── Drill-down view: domain selected ────────────────────────────────────
+    if (_selectedDomain != null) {
+      return Scaffold(
+        backgroundColor: AppTheme.bg,
+        appBar: AppBar(
+          backgroundColor: AppTheme.surface,
+          surfaceTintColor: Colors.transparent,
+          leading: IconButton(
+            icon: Icon(PhosphorIcons.arrowLeft(), color: AppTheme.onSurface),
+            onPressed: () => setState(() => _selectedDomain = null),
+          ),
+          title: Text(
+            ContentService.domainMeta[_selectedDomain!]?['label'] ??
+                _selectedDomain!,
+            style: GoogleFonts.sora(
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.onSurface,
+              letterSpacing: -0.3,
+            ),
+          ),
+        ),
+        body: _LessonList(
+          domain: _selectedDomain!,
+          lessons: _contentService.getByDomain(_selectedDomain!),
+          profile: _profile,
+          onLessonTap: _openLesson,
+        ),
+      );
+    }
+
+    // ── Main view ────────────────────────────────────────────────────────────
+    return Scaffold(
+      backgroundColor: AppTheme.bg,
+      body: SafeArea(
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: DisplayHeader(
+                      greeting: 'Bonjour',
+                      title: 'Speak\nEnglish.',
+                      subtitle:
+                          'Niveau ${_profile.level.code} · Continue ta progression',
+                      actions: [
+                        const SizedBox(width: 12),
+                        _buildLevelButton(),
+                      ],
+                    ),
+                  ),
+                  // Level dropdown — only when open
+                  if (_levelOpen)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                        child: _LevelTile(
+                          profile: _profile,
+                          isOpen: _levelOpen,
+                          onToggle: () =>
+                              setState(() => _levelOpen = !_levelOpen),
+                          onSelect: _selectLevel,
+                        ),
+                      ),
+                    ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 20)),
+                  SliverToBoxAdapter(child: _buildDiscussionCta()),
+                  const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                  SliverToBoxAdapter(child: _buildSectionLabel('Thèmes')),
+                  const SliverToBoxAdapter(child: SizedBox(height: 10)),
+                  _buildThemeGrid(),
+                  const SliverToBoxAdapter(child: SizedBox(height: 20)),
+                  SliverToBoxAdapter(child: _buildGenerateSection()),
+                  const SliverToBoxAdapter(child: SizedBox(height: 40)),
+                ],
+              ),
+      ),
     );
   }
 }
 
-// ── Level tile ─────────────────────────────────────────────────────────────────
+// ── Level tile (dropdown body) ────────────────────────────────────────────────
 
 class _LevelTile extends StatelessWidget {
   final UserProfile profile;
@@ -390,8 +582,10 @@ class _LevelTile extends StatelessWidget {
                   AnimatedRotation(
                     turns: isOpen ? 0.5 : 0,
                     duration: const Duration(milliseconds: 200),
-                    child: const Icon(Icons.keyboard_arrow_down_rounded,
-                        color: AppTheme.muted),
+                    child: Icon(
+                      PhosphorIcons.caretDown(),
+                      color: AppTheme.muted,
+                    ),
                   ),
                 ],
               ),
@@ -440,7 +634,8 @@ class _LevelTile extends StatelessWidget {
                                       ? AppTheme.primary
                                       : AppTheme.surfaceHigh,
                                   borderRadius: BorderRadius.circular(7),
-                                  border: Border.all(color: AppTheme.border),
+                                  border:
+                                      Border.all(color: AppTheme.border),
                                 ),
                                 child: Center(
                                   child: Text(
@@ -467,8 +662,12 @@ class _LevelTile extends StatelessWidget {
                                 ),
                               ),
                               if (isSelected)
-                                const Icon(Icons.check_circle_rounded,
-                                    color: AppTheme.primary, size: 18),
+                                Icon(
+                                  PhosphorIcons.checkCircle(
+                                      PhosphorIconsStyle.fill),
+                                  color: AppTheme.primary,
+                                  size: 18,
+                                ),
                             ],
                           ),
                         ),
@@ -485,7 +684,7 @@ class _LevelTile extends StatelessWidget {
   }
 }
 
-// ── Generate card ──────────────────────────────────────────────────────────────
+// ── Generate card ─────────────────────────────────────────────────────────────
 
 class _GenerateCard extends StatelessWidget {
   final TextEditingController controller;
@@ -577,7 +776,8 @@ class _GenerateCard extends StatelessWidget {
                     boxShadow: isRecording
                         ? [
                             BoxShadow(
-                              color: const Color(0xFFEF4444).withValues(alpha: 0.3),
+                              color: const Color(0xFFEF4444)
+                                  .withValues(alpha: 0.3),
                               blurRadius: 8,
                               spreadRadius: 2,
                             )
@@ -591,8 +791,11 @@ class _GenerateCard extends StatelessWidget {
                               color: AppTheme.primary, strokeWidth: 2),
                         )
                       : Icon(
-                          isRecording ? Icons.stop_rounded : Icons.mic_rounded,
-                          color: isRecording ? Colors.white : AppTheme.primary,
+                          isRecording
+                              ? PhosphorIcons.stop()
+                              : PhosphorIcons.microphone(),
+                          color:
+                              isRecording ? Colors.white : AppTheme.primary,
                           size: 20,
                         ),
                 ),
@@ -630,21 +833,35 @@ class _GenerateCard extends StatelessWidget {
                                 ),
                               )
                             : isRecording
-                                ? const Text(
-                                    '🔴 Enregistrement...',
-                                    style: TextStyle(
-                                      color: Color(0xFFEF4444),
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  )
-                                : const Row(
+                                ? Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(Icons.auto_awesome_rounded,
+                                      Container(
+                                        width: 8,
+                                        height: 8,
+                                        decoration: const BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: Color(0xFFEF4444),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      const Text(
+                                        'Enregistrement...',
+                                        style: TextStyle(
+                                          color: Color(0xFFEF4444),
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                : Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(PhosphorIcons.sparkle(),
                                           size: 16, color: Colors.white),
-                                      SizedBox(width: 8),
-                                      Text(
+                                      const SizedBox(width: 8),
+                                      const Text(
                                         'Générer',
                                         style: TextStyle(
                                           color: Colors.white,
@@ -665,7 +882,7 @@ class _GenerateCard extends StatelessWidget {
   }
 }
 
-// ── Generated lesson card ──────────────────────────────────────────────────────
+// ── Generated lesson card ─────────────────────────────────────────────────────
 
 class _GeneratedCard extends StatelessWidget {
   final Lesson lesson;
@@ -698,6 +915,7 @@ class _GeneratedCard extends StatelessWidget {
         ),
         child: Row(
           children: [
+            // Keep data-layer emoji as-is
             Text(lesson.emoji, style: const TextStyle(fontSize: 24)),
             const SizedBox(width: 12),
             Expanded(
@@ -725,13 +943,21 @@ class _GeneratedCard extends StatelessWidget {
                           color: AppTheme.primaryLight,
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: const Text(
-                          '✨ Généré',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: AppTheme.primary,
-                          ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(PhosphorIcons.sparkle(),
+                                size: 10, color: AppTheme.primary),
+                            const SizedBox(width: 3),
+                            const Text(
+                              'Généré',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.primary,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -749,10 +975,8 @@ class _GeneratedCard extends StatelessWidget {
                     spacing: 6,
                     children: [
                       _chip(lesson.level.code, AppTheme.primary),
-                      _chip('⏱ ${lesson.durationLabel}', AppTheme.muted),
-                      if (isCompleted)
-                        _chip('✓', AppTheme.accent,
-                            bg: const Color(0xFFD1FAE5)),
+                      _durationChip(lesson.durationLabel),
+                      if (isCompleted) _completedChip(),
                     ],
                   ),
                 ],
@@ -761,13 +985,19 @@ class _GeneratedCard extends StatelessWidget {
             const SizedBox(width: 8),
             Column(
               children: [
-                const Icon(Icons.play_circle_rounded,
-                    color: AppTheme.primary, size: 24),
+                Icon(
+                  PhosphorIcons.playCircle(PhosphorIconsStyle.fill),
+                  color: AppTheme.primary,
+                  size: 24,
+                ),
                 const SizedBox(height: 4),
                 GestureDetector(
                   onTap: onDelete,
-                  child: const Icon(Icons.delete_outline_rounded,
-                      color: AppTheme.muted, size: 18),
+                  child: Icon(
+                    PhosphorIcons.trash(),
+                    color: AppTheme.muted,
+                    size: 18,
+                  ),
                 ),
               ],
             ),
@@ -785,13 +1015,48 @@ class _GeneratedCard extends StatelessWidget {
         ),
         child: Text(
           label,
-          style:
-              TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color),
+          style: TextStyle(
+              fontSize: 10, fontWeight: FontWeight.w600, color: color),
+        ),
+      );
+
+  Widget _durationChip(String durationLabel) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: AppTheme.muted.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(5),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(PhosphorIcons.clock(), size: 10, color: AppTheme.muted),
+            const SizedBox(width: 3),
+            Text(
+              durationLabel,
+              style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.muted),
+            ),
+          ],
+        ),
+      );
+
+  Widget _completedChip() => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: const Color(0xFFD1FAE5),
+          borderRadius: BorderRadius.circular(5),
+        ),
+        child: Icon(
+          PhosphorIcons.checkCircle(PhosphorIconsStyle.fill),
+          size: 10,
+          color: AppTheme.accent,
         ),
       );
 }
 
-// ── Lesson list (domain drill-down) ───────────────────────────────────────────
+// ── Lesson list (domain drill-down) ──────────────────────────────────────────
 
 class _LessonList extends StatelessWidget {
   final String domain;
@@ -835,6 +1100,7 @@ class _LessonList extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
+                      // Keep data-layer emoji as-is
                       Text(l.emoji, style: const TextStyle(fontSize: 28)),
                       const SizedBox(width: 14),
                       Expanded(
@@ -843,7 +1109,8 @@ class _LessonList extends StatelessWidget {
                           children: [
                             Text(l.title,
                                 style: const TextStyle(
-                                    fontWeight: FontWeight.w600, fontSize: 15)),
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 15)),
                             const SizedBox(height: 2),
                             Text(l.description,
                                 style: const TextStyle(
@@ -855,17 +1122,18 @@ class _LessonList extends StatelessWidget {
                               spacing: 6,
                               children: [
                                 _chip(l.level.code, AppTheme.primary),
-                                _chip('⏱ ${l.durationLabel}', AppTheme.muted),
-                                if (done)
-                                  _chip('✓', AppTheme.accent,
-                                      bg: const Color(0xFFD1FAE5)),
+                                _durationChip(l.durationLabel),
+                                if (done) _completedChip(),
                               ],
                             ),
                           ],
                         ),
                       ),
-                      const Icon(Icons.play_circle_rounded,
-                          color: AppTheme.primary, size: 28),
+                      Icon(
+                        PhosphorIcons.playCircle(PhosphorIconsStyle.fill),
+                        color: AppTheme.primary,
+                        size: 28,
+                      ),
                     ],
                   ),
                 ),
@@ -882,43 +1150,43 @@ class _LessonList extends StatelessWidget {
         ),
         child: Text(
           label,
-          style:
-              TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
+          style: TextStyle(
+              fontSize: 11, fontWeight: FontWeight.w600, color: color),
         ),
       );
-}
 
-// ── Section label ──────────────────────────────────────────────────────────────
-
-class _SectionLabel extends StatelessWidget {
-  final String title;
-  final String? subtitle;
-  const _SectionLabel({required this.title, this.subtitle});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w800,
-            color: AppTheme.onSurface,
-            letterSpacing: -0.5,
-          ),
+  Widget _durationChip(String durationLabel) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+        decoration: BoxDecoration(
+          color: AppTheme.muted.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(6),
         ),
-        if (subtitle != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Text(
-              subtitle!,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(PhosphorIcons.clock(), size: 11, color: AppTheme.muted),
+            const SizedBox(width: 3),
+            Text(
+              durationLabel,
               style: const TextStyle(
-                  fontSize: 13, color: AppTheme.muted, height: 1.5),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.muted),
             ),
-          ),
-      ],
-    );
-  }
+          ],
+        ),
+      );
+
+  Widget _completedChip() => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+        decoration: BoxDecoration(
+          color: const Color(0xFFD1FAE5),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Icon(
+          PhosphorIcons.checkCircle(PhosphorIconsStyle.fill),
+          size: 11,
+          color: AppTheme.accent,
+        ),
+      );
 }

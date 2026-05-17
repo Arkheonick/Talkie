@@ -95,7 +95,7 @@ class _MainShellState extends State<MainShell> {
   Widget _buildScreen(int i) {
     if (!_visited.contains(i)) return const ColoredBox(color: AppTheme.bg);
     switch (i) {
-      case 0: return const ExploreScreen();
+      case 0: return ExploreScreen(onOpenDiscussion: () => _selectTab(2));
       case 1: return const QuizSetupScreen();
       case 2: return const ProfScreen();
       case 3: return const LexiqueScreen();
