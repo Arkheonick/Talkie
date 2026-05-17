@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../app/theme.dart';
 import '../../models/cefr_level.dart';
 import '../../models/notebook_entry.dart';
@@ -10,6 +11,7 @@ import '../../services/notebook_service.dart';
 import '../../services/tts_service.dart';
 import '../../services/user_profile_service.dart';
 import '../../services/vocab_folder_service.dart';
+import '../../widgets/talkie_orb.dart';
 
 // lessonId used for all words saved from the Discussion screen
 const _kDiscussionLessonId = 'discussion';
@@ -40,6 +42,7 @@ class _ProfScreenState extends State<ProfScreen> {
   bool _isTranscribing = false;
   bool _initialized = false;
   DateTime? _recordingStartTime;
+  String? _currentTopic;
 
   static const _topics = [
     'Ma journée',
@@ -118,6 +121,7 @@ class _ProfScreenState extends State<ProfScreen> {
       _messages.clear();
       _isProcessing = false;
       _initialized = false;
+      _currentTopic = null;
     });
     await _startConversation(level);
   }
@@ -128,6 +132,7 @@ class _ProfScreenState extends State<ProfScreen> {
       _messages.clear();
       _isProcessing = false;
       _initialized = false;
+      _currentTopic = null;
     });
     await _startConversation(_profile.effectiveDiscussionLevel);
   }
@@ -238,7 +243,7 @@ class _ProfScreenState extends State<ProfScreen> {
                       ),
                       if (isSelected) ...[
                         const Spacer(),
-                        Icon(Icons.check_rounded,
+                        Icon(PhosphorIcons.check(),
                             color: AppTheme.primary, size: 18),
                       ],
                     ],
@@ -343,7 +348,10 @@ class _ProfScreenState extends State<ProfScreen> {
     setState(() => _isRecording = true);
   }
 
-  void _sendTopic(String topic) => _send('Let\'s talk about: $topic');
+  void _sendTopic(String topic) {
+    setState(() => _currentTopic = topic);
+    _send('Let\'s talk about: $topic');
+  }
 
   Future<void> _saveWord({String word = '', String translation = ''}) async {
     await showModalBottomSheet(
@@ -362,6 +370,28 @@ class _ProfScreenState extends State<ProfScreen> {
         translation: translation,
       ),
     );
+  }
+
+  OrbState get _orbState {
+    if (_isRecording) return OrbState.listening;
+    if (_isTranscribing || _isProcessing) return OrbState.thinking;
+    if (_tts.playingIndex.value != -1) return OrbState.speaking;
+    return OrbState.idle;
+  }
+
+  String get _orbLabel {
+    if (_isRecording) return 'EN ÉCOUTE';
+    if (_isTranscribing) return 'ANALYSE...';
+    if (_isProcessing) return 'RÉFLEXION...';
+    if (_tts.playingIndex.value != -1) return 'PROF PARLE';
+    return 'EN ATTENTE';
+  }
+
+  String get _orbSubLabel {
+    if (_isRecording) return 'Relâche pour envoyer';
+    if (_isProcessing || _isTranscribing) return '';
+    if (_tts.playingIndex.value != -1) return 'Écoute ton professeur';
+    return 'Appuie sur l\'orbe pour parler';
   }
 
   @override
@@ -391,21 +421,19 @@ class _ProfScreenState extends State<ProfScreen> {
                 color: AppTheme.primaryLight,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Center(
-                child: Text('🎓', style: TextStyle(fontSize: 18)),
+              child: Center(
+                child: Icon(PhosphorIcons.graduationCap(), size: 18, color: AppTheme.primary),
               ),
             ),
             const SizedBox(width: 10),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Discussion libre',
-                    style:
-                        TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
-                Text(
-                  'Parler, corriger, enregistrer des mots',
-                  style: TextStyle(fontSize: 11, color: AppTheme.muted),
-                ),
+                const Text('Discussion libre', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+                if (_currentTopic != null)
+                  Text(_currentTopic!, style: const TextStyle(fontSize: 11, color: AppTheme.muted))
+                else
+                  const Text('Parle, corrige, enregistre', style: TextStyle(fontSize: 11, color: AppTheme.muted)),
               ],
             ),
           ],
@@ -419,11 +447,9 @@ class _ProfScreenState extends State<ProfScreen> {
               decoration: BoxDecoration(
                 color: AppTheme.primaryLight,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                    color: AppTheme.primary.withValues(alpha: 0.3)),
+                border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
               ),
-              child: const Icon(Icons.add_comment_rounded,
-                  color: AppTheme.primary, size: 18),
+              child: Icon(PhosphorIcons.arrowCounterClockwise(), color: AppTheme.primary, size: 18),
             ),
           ),
           GestureDetector(
@@ -434,33 +460,17 @@ class _ProfScreenState extends State<ProfScreen> {
               decoration: BoxDecoration(
                 color: AppTheme.primaryLight,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                    color: AppTheme.primary.withValues(alpha: 0.3)),
+                border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text(
-                    'Mon niveau',
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.primary,
-                    ),
-                  ),
+                  const Text('Mon niveau', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: AppTheme.primary)),
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        _profile.effectiveDiscussionLevel.code,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                          color: AppTheme.primary,
-                        ),
-                      ),
-                      const Icon(Icons.arrow_drop_down_rounded,
-                          size: 14, color: AppTheme.primary),
+                      Text(_profile.effectiveDiscussionLevel.code, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppTheme.primary)),
+                      Icon(PhosphorIcons.caretDown(), size: 14, color: AppTheme.primary),
                     ],
                   ),
                 ],
@@ -469,88 +479,107 @@ class _ProfScreenState extends State<ProfScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Quick topic chips — shown only at the start
-          if (_initialized && _messages.length < 3)
-            Container(
-              height: 44,
-              color: AppTheme.surface,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                itemCount: _topics.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
-                itemBuilder: (_, i) => GestureDetector(
-                  onTap: () => _sendTopic(_topics[i]),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryLight,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      _topics[i],
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.primary,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          // Messages
-          Expanded(
-            child: _messages.isEmpty && _isProcessing
-                ? const Center(child: CircularProgressIndicator())
-                : ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _messages.length + (_isProcessing ? 1 : 0),
-                    itemBuilder: (_, i) {
-                      if (i == _messages.length) {
-                        return const _TypingIndicator();
-                      }
-                      final m = _messages[i];
-                      return _Bubble(
-                        role: m.role,
-                        text: m.text,
-                        msgIndex: i,
-                        ttsService: m.role == 'assistant' ? _tts : null,
-                        ttsText: m.role == 'assistant'
-                            ? _stripVocabForTts(m.text)
-                            : '',
-                        onSaveWord:
-                            m.role == 'assistant' ? _saveWord : null,
-                      );
-                    },
-                  ),
-          ),
-          _buildInputBar(),
-        ],
+      body: ValueListenableBuilder<int>(
+        valueListenable: _tts.playingIndex,
+        builder: (context, _, __) => Column(
+          children: [
+            Expanded(flex: 5, child: _buildOrbZone()),
+            Expanded(flex: 4, child: _buildTranscript()),
+            _buildControls(),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildInputBar() {
+  Widget _buildOrbZone() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        if (_messages.isEmpty && _initialized) ...[
+          SizedBox(
+            height: 44,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              itemCount: _topics.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (_, i) => GestureDetector(
+                onTap: () => _sendTopic(_topics[i]),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryLight,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppTheme.primary.withValues(alpha: 0.25)),
+                  ),
+                  child: Center(
+                    child: Text(_topics[i], style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.primary)),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
+        TalkieOrb(
+          state: _orbState,
+          size: 130,
+          onTap: (_isProcessing || _isTranscribing) ? null : _toggleRecording,
+        ),
+        const SizedBox(height: 14),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          child: Text(
+            _orbLabel,
+            key: ValueKey(_orbLabel),
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.primary, letterSpacing: 0.08),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(_orbSubLabel, style: const TextStyle(fontSize: 11, color: AppTheme.muted)),
+      ],
+    );
+  }
+
+  Widget _buildTranscript() {
+    if (_messages.isEmpty && _isProcessing) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      itemCount: _messages.length + (_isProcessing ? 1 : 0),
+      itemBuilder: (_, i) {
+        if (i == _messages.length) return const _TypingIndicator();
+        final m = _messages[i];
+        return _Bubble(
+          role: m.role,
+          text: m.text,
+          msgIndex: i,
+          ttsService: m.role == 'assistant' ? _tts : null,
+          ttsText: m.role == 'assistant' ? _stripVocabForTts(m.text) : '',
+          onSaveWord: m.role == 'assistant' ? _saveWord : null,
+        );
+      },
+    );
+  }
+
+  Widget _buildControls() {
     final disabled = _isProcessing || _isTranscribing;
     final String hint;
     if (_isRecording) {
-      hint = '🔴 Enregistrement...';
+      hint = 'Enregistrement...';
     } else if (_isTranscribing) {
       hint = 'Transcription...';
     } else if (_isProcessing) {
       hint = 'Alex réfléchit...';
     } else {
-      hint = 'Parle ou tape en anglais';
+      hint = 'Ou tape en anglais...';
     }
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 28),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
       decoration: const BoxDecoration(
         color: AppTheme.surface,
         border: Border(top: BorderSide(color: AppTheme.border)),
@@ -558,108 +587,149 @@ class _ProfScreenState extends State<ProfScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Text(
-              hint,
-              style: TextStyle(
-                fontSize: 12,
-                color: _isRecording
-                    ? const Color(0xFFEF4444)
-                    : AppTheme.muted,
-                fontWeight:
-                    _isRecording ? FontWeight.w600 : FontWeight.normal,
+          // Text input row
+          if (!_isRecording)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceHigh,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: AppTheme.border),
+                      ),
+                      child: Listener(
+                        onPointerDown: (_) => _tts.pausePlayback(),
+                        child: TextField(
+                          controller: _textController,
+                          focusNode: _focusNode,
+                          enabled: !disabled,
+                          decoration: InputDecoration(
+                            hintText: hint,
+                            hintStyle: TextStyle(
+                              color: _isTranscribing || _isProcessing ? AppTheme.primary : AppTheme.muted,
+                              fontSize: 13,
+                            ),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                          ),
+                          textInputAction: TextInputAction.send,
+                          onSubmitted: _send,
+                          maxLines: 2,
+                          minLines: 1,
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: disabled ? null : () => _send(_textController.text),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: disabled ? AppTheme.border : AppTheme.accent,
+                      ),
+                      child: Icon(PhosphorIcons.paperPlaneRight(PhosphorIconsStyle.fill), color: Colors.white, size: 18),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
+          // Main action row
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
+              _ControlBtn(
+                icon: PhosphorIcons.arrowCounterClockwise(),
+                label: 'Nouveau',
+                onTap: _newDiscussion,
+              ),
               GestureDetector(
-                onTap: _toggleRecording,
+                onTap: (disabled) ? null : _toggleRecording,
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: 52,
-                  height: 52,
+                  duration: const Duration(milliseconds: 180),
+                  width: 60,
+                  height: 60,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: _isRecording
-                        ? const Color(0xFFEF4444)
-                        : disabled
-                            ? AppTheme.border
-                            : AppTheme.primary,
-                    boxShadow: _isRecording
-                        ? [
-                            BoxShadow(
-                              color: const Color(0xFFEF4444)
-                                  .withValues(alpha: 0.4),
-                              blurRadius: 14,
-                              spreadRadius: 3,
-                            )
-                          ]
-                        : [],
+                    gradient: LinearGradient(
+                      colors: _isRecording
+                          ? [const Color(0xFF7C3AED), const Color(0xFFA855F7)]
+                          : disabled
+                              ? [AppTheme.border, AppTheme.border]
+                              : [const Color(0xFF4338CA), AppTheme.primary],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primary.withValues(alpha: _isRecording ? 0.45 : 0.25),
+                        blurRadius: _isRecording ? 20 : 12,
+                        spreadRadius: _isRecording ? 2 : 0,
+                      ),
+                    ],
                   ),
                   child: _isTranscribing
                       ? const Padding(
                           padding: EdgeInsets.all(14),
-                          child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2),
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
                         )
                       : Icon(
                           _isRecording
-                              ? Icons.stop_rounded
-                              : Icons.mic_rounded,
+                              ? PhosphorIcons.stop(PhosphorIconsStyle.fill)
+                              : PhosphorIcons.microphone(PhosphorIconsStyle.fill),
                           color: Colors.white,
-                          size: 24,
+                          size: 26,
                         ),
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: AppTheme.surface,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: AppTheme.border),
-                  ),
-                  child: Listener(
-                    onPointerDown: (_) => _tts.pausePlayback(),
-                    child: TextField(
-                      controller: _textController,
-                      focusNode: _focusNode,
-                      enabled: !disabled && !_isRecording,
-                      decoration: const InputDecoration(
-                        hintText: 'Ou tape ici...',
-                        hintStyle:
-                            TextStyle(color: AppTheme.muted, fontSize: 14),
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
-                      ),
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: _send,
-                      maxLines: 3,
-                      minLines: 1,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: disabled ? null : () => _send(_textController.text),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: disabled ? AppTheme.border : AppTheme.accent,
-                  ),
-                  child: const Icon(Icons.send_rounded,
-                      color: Colors.white, size: 20),
-                ),
+              _ControlBtn(
+                icon: PhosphorIcons.bookmarkSimple(),
+                label: 'Sauvegarder',
+                onTap: _saveWord,
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Control button widget ──────────────────────────────────────────────────────
+
+class _ControlBtn extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _ControlBtn({required this.icon, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceHigh,
+              shape: BoxShape.circle,
+              border: Border.all(color: AppTheme.border),
+            ),
+            child: Icon(icon, color: AppTheme.muted, size: 18),
+          ),
+          const SizedBox(height: 4),
+          Text(label, style: const TextStyle(fontSize: 10, color: AppTheme.muted, fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -830,8 +900,8 @@ class _Bubble extends StatelessWidget {
                   ),
                   child: Icon(
                     isPlaying
-                        ? Icons.pause_rounded
-                        : Icons.play_arrow_rounded,
+                        ? PhosphorIcons.pause(PhosphorIconsStyle.fill)
+                        : PhosphorIcons.play(PhosphorIconsStyle.fill),
                     size: 16,
                     color: isPlaying ? Colors.white : AppTheme.primary,
                   ),
@@ -906,7 +976,7 @@ class _Bubble extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
                 child: Row(
                   children: [
-                    const Icon(Icons.menu_book_rounded,
+                    Icon(PhosphorIcons.bookOpen(),
                         size: 13, color: AppTheme.primary),
                     const SizedBox(width: 6),
                     const Text(
@@ -1014,9 +1084,9 @@ class _VocabRow extends StatelessWidget {
             if (onSave != null)
               GestureDetector(
                 onTap: onSave,
-                child: const Padding(
-                  padding: EdgeInsets.only(left: 8, top: 2),
-                  child: Icon(Icons.bookmark_add_outlined,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 8, top: 2),
+                  child: Icon(PhosphorIcons.bookmarkSimple(),
                       size: 18, color: AppTheme.primary),
                 ),
               ),
@@ -1117,7 +1187,7 @@ class _SaveWordSheet extends StatelessWidget {
             children: [
               Expanded(
                 child: _pickerBtn(
-                  icon: Icons.bookmark_rounded,
+                  icon: PhosphorIcons.bookmarkSimple(PhosphorIconsStyle.fill),
                   label: 'Sans dossier',
                   accent: false,
                   onTap: () => _save(context, null),
@@ -1126,7 +1196,7 @@ class _SaveWordSheet extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: _pickerBtn(
-                  icon: Icons.create_new_folder_rounded,
+                  icon: PhosphorIcons.folderPlus(),
                   label: '+ Nouveau dossier',
                   accent: true,
                   onTap: () => _createFolderAndSave(context),
