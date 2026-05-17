@@ -44,6 +44,10 @@ dependencies:
   printing: ^5.13.1
   # Fonts
   google_fonts: ^6.2.1
+  # Design
+  phosphor_flutter: ^2.1.0
+  flutter_svg: ^2.0.3
+  lottie: ^3.1.0
   # Config
   flutter_dotenv: ^5.2.1
   # Utils
@@ -82,3 +86,4 @@ flutter:
     - assets/content/lessons/work_interview.json
     - assets/content/lessons/daily_coffee.json
     - assets/content/lessons/sport_gym.json
+    - assets/illustrations/
